@@ -264,14 +264,9 @@ You can customize categories, subcategories, and keywords at any time by editing
 
 ---
 
-## 🔨 Building the Standalone EXE
+## 📦 Standalone Portable Executable
 
-To package your own standalone `.exe` from source:
-```bash
-pip install pyinstaller
-python build_exe.py
-```
-The output executable will be generated in `dist/Wardrobe.exe`.
+A pre-compiled standalone **`Wardrobe.exe`** (requiring zero setup or Python installation) is available for direct download under the [Releases](https://github.com/Kushkc007/Wardrobe/releases) tab. Simply download and double-click to run!
 
 ---
 

@@ -19,6 +19,7 @@ reports/
 build/
 dist/
 *.spec
+build_exe.py
 
 # Editor & OS files
 .vscode/
