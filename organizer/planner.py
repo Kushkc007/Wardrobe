@@ -84,7 +84,7 @@ def detect_person(f: FileInfo, people: list[str] | None = None) -> str:
         if re.search(pat, name_low) or re.search(pat, rel_low):
             return k.capitalize()
 
-    # 3. Dynamic Folder Provenance: e.g. 'Downloads/Govind/file.pdf' or 'Pictures/Kush/photo.jpg'
+    # 3. Dynamic Folder Provenance: e.g. 'Downloads/Alex/file.pdf' or 'Pictures/Sam/photo.jpg'
     parts = re.split(r"[\\/]", f.rel_dir)
     for part in reversed(parts):
         cleaned = re.sub(r"[^a-zA-Z]", "", part).strip()
@@ -96,7 +96,7 @@ def detect_person(f: FileInfo, people: list[str] | None = None) -> str:
             }:
                 return cleaned.capitalize()
 
-    # 4. Proper noun extraction from filename (e.g. 'Passport Govind', 'Jaycon Salary Slip', 'Kush Resume')
+    # 4. Proper noun extraction from filename (e.g. 'Passport Alex', 'Company Salary Slip', 'Sam Resume')
     stem = Path(f.name).stem
     tokens = re.split(r"[^a-zA-Z0-9]+", stem)
     candidates = []
@@ -113,7 +113,7 @@ def detect_person(f: FileInfo, people: list[str] | None = None) -> str:
     if candidates:
         return candidates[0]
 
-    # 5. Extract from text header (e.g. 'Name: Govind Sharma', 'Candidate: Kush')
+    # 5. Extract from text header (e.g. 'Name: Alex Smith', 'Candidate: Sam')
     text = (f.text or "")[:1500]
     if text:
         m = re.search(r"(?:Name|Employee Name|Candidate|Candidate Name|Patient Name)\s*[:\-]\s*([A-Z][a-z]+)", text, re.IGNORECASE)

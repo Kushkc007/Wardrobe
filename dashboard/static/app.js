@@ -976,7 +976,7 @@ function setScopeMode(mode) {
     }
     if (input) {
       input.disabled = false;
-      input.placeholder = 'Enter or paste folder path (e.g. C:\\Users\\kushk\\Downloads or D:\\Data)';
+      input.placeholder = 'Enter or paste folder path (e.g. C:\\Users\\username\\Downloads or D:\\Data)';
       input.focus();
       updateLiveBreadcrumbPath(input.value.trim() || 'Custom Directory · Waiting for path input...');
     }
