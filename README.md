@@ -8,6 +8,13 @@
 > **A human-centric, deterministic file organizer with a real-time web dashboard.**  
 > It reads your messy folders, understands what each file is **actually for**, and organizes everything into meaningful categories (e.g. `Money & Paperwork/Invoices & Receipts`, `Work & Clients/Contracts`, `Personal & Life/Identity`) — instead of useless dumping grounds like `PDF/`, `Images/`, or `2024/`.
 
+<br/>
+
+<div align="center">
+  <img src="assets/wardrobe_demo.gif" alt="Wardrobe Live Dashboard Demo" width="100%" />
+  <p><em>Real-Time Live Sorting Chamber and Interactive Move Validation Control Room</em></p>
+</div>
+
 ---
 
 ## 📑 Table of Contents
