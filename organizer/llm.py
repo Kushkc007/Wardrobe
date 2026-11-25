@@ -18,10 +18,10 @@ SYSTEM = """You are a file-librarian. You place a person's computer files into t
 personal "wardrobe" of folders.
 
 Rules:
-- Choose exactly one category and one subcategory from the provided taxonomy.
+- Choose the most fitting category and subcategory from the provided taxonomy, OR synthesize a dynamic contextual folder hierarchy on the spot (e.g. "NASA" / "James_Webb_Space_Telescope", "Cinri Health API", "Office_Work" / "Vendor_Invoices_Q3", "Machine_Learning_Transformers", "Organic_Chemistry") if the file clearly belongs to a specific project, company, entity, or domain.
 - Judge by what the file is FOR, not by its file format. A PDF invoice and a
   PDF novel belong in different places.
-- Prefer a specific subcategory over a generic one.
+- Prefer a specific subcategory or discovered project over a generic one.
 - If the content is genuinely unclear, use the "Unsorted" / "Needs Review" pair
   and give a low confidence.
 - confidence is a number from 0 to 1. Be honest: 0.9+ only when certain.
@@ -97,18 +97,27 @@ def classify(cfg: Config, taxonomy: dict, files: list[FileInfo]) -> LlmResult:
             fid = str(item.get("id", ""))
             cat = str(item.get("category", "")).strip()
             sub = str(item.get("subcategory", "")).strip()
-            if not fid or (cat, sub) not in valid:
+            if not fid or not cat:
+                continue
+            is_valid_pair = (cat, sub) in valid
+            # Allow dynamic contextual topics synthesized on the spot by LLM
+            is_dynamic = bool(getattr(cfg, "dynamic_context_folders", True) and cat and cat != "Unsorted")
+            if not is_valid_pair and not is_dynamic:
                 continue
             try:
                 conf = float(item.get("confidence", 0.5))
             except (TypeError, ValueError):
                 conf = 0.5
+            ctx_path = [cat, sub] if (not is_valid_pair and sub and sub != cat) else ([cat] if not is_valid_pair else [])
             verdicts[fid] = Verdict(
                 category=cat,
-                subcategory=sub,
+                subcategory=sub or cat,
                 confidence=max(0.0, min(1.0, conf)),
                 reason=str(item.get("reason", ""))[:160],
                 method="llm",
+                topic=cat if not is_valid_pair else "",
+                subtopic=sub if not is_valid_pair else "",
+                context_path=ctx_path,
             )
     return LlmResult(verdicts, "; ".join(errors))
 

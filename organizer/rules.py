@@ -11,9 +11,9 @@ and "notes" does not outvote "call notes".
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
 
+from .doc_intel import extract_contextual_topic
 from .scanner import FileInfo
 
 _TOKEN = re.compile(r"[a-z0-9]+")
@@ -56,6 +56,9 @@ class Verdict:
     confidence: float
     reason: str
     method: str = "rules"
+    topic: str = ""
+    subtopic: str = ""
+    context_path: list[str] = field(default_factory=list)
 
 
 def _tokens(text: str) -> set[str]:
@@ -105,6 +108,8 @@ def is_compatible(ext: str, category: str, subcategory: str, hints: set[str]) ->
             return sub in {"photos", "screenshots", "wallpapers & art"}
         if "creative projects" in cat:
             return sub in {"design & brand"}
+        if "whatsapp junk" in cat:
+            return sub in {"greetings", "memes", "forwards", "needs review"}
         # Scanned documents / bills / IDs: only allow if OCR hint explicitly detected text/document
         if {"scan", "document", "text"} & hints:
             return True
@@ -116,6 +121,8 @@ def is_compatible(ext: str, category: str, subcategory: str, hints: set[str]) ->
             return False
         if cat in {"money & paperwork", "installers & software", "archive & old"}:
             return False
+        if "whatsapp junk" in cat:
+            return sub in {"greetings", "memes", "forwards", "needs review"}
         return sub in {"personal video", "youtube & shorts", "editing & timelines", "courses", "needs review"}
 
     # Audio
@@ -230,6 +237,20 @@ class RuleEngine:
                     body_score += 1.8
                     hits.append(kw)
 
+            if entry["category"] == "WhatsApp Junk":
+                if "greeting" in hints and entry["subcategory"] == "Greetings":
+                    score += 8.0
+                    named = True
+                    hits.append("greeting")
+                elif "meme" in hints and entry["subcategory"] == "Memes":
+                    score += 8.0
+                    named = True
+                    hits.append("meme")
+                elif "whatsapp_junk" in hints:
+                    score += 6.0
+                    named = True
+                    hits.append("whatsapp junk")
+
             # Cap body text match influence so internal text doesn't overrule clear titles
             body_only = (
                 body_score
@@ -244,6 +265,21 @@ class RuleEngine:
 
             if score > 0 and (best is None or score > best[0]):
                 best = (score, entry, hits, named, ext_match)
+
+        # Check dynamic contextual topic synthesis (e.g. NASA, Cinri Health, Organic Chemistry, Office Work)
+        # Dynamic contextual topic on the spot takes precedence over rigid taxonomy buckets
+        ctx = extract_contextual_topic(f.name, f.text, f.rel_dir)
+        if ctx.confidence >= 0.80:
+            return Verdict(
+                category=ctx.topic,
+                subcategory=ctx.subtopic or ctx.topic,
+                confidence=ctx.confidence,
+                reason=ctx.reason,
+                method="rules_dynamic",
+                topic=ctx.topic,
+                subtopic=ctx.subtopic,
+                context_path=ctx.context_path,
+            )
 
         if best is None or best[0] < 1.0:
             return self._fallback(f)
@@ -281,9 +317,31 @@ class RuleEngine:
         reason = "matched " + ", ".join(repr(h) for h in unique) if unique else f"extension match ({ext})"
         if not named and not ext_match:
             reason = "weak: " + reason + " (inside the file only)"
-        return Verdict(entry["category"], entry["subcategory"], round(confidence, 2), reason)
+        return Verdict(
+            entry["category"],
+            entry["subcategory"],
+            round(confidence, 2),
+            reason,
+            topic=ctx.topic if ctx.confidence >= 0.80 else "",
+            subtopic=ctx.subtopic if ctx.confidence >= 0.80 else "",
+            context_path=ctx.context_path if ctx.confidence >= 0.80 else [],
+        )
 
     def _fallback(self, f: FileInfo) -> Verdict:
+        # Dynamic contextual topic fallback (creates folder on the spot)
+        ctx = extract_contextual_topic(f.name, f.text, f.rel_dir)
+        if ctx.confidence >= 0.80:
+            return Verdict(
+                category=ctx.topic,
+                subcategory=ctx.subtopic or ctx.topic,
+                confidence=ctx.confidence,
+                reason=ctx.reason,
+                method="rules_dynamic",
+                topic=ctx.topic,
+                subtopic=ctx.subtopic,
+                context_path=ctx.context_path,
+            )
+
         ext = f.ext.lower()
         pair = self.fallback.get(ext)
         if pair and len(pair) == 2:

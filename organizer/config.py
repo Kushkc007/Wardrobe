@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
-import tomllib
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -84,6 +89,14 @@ class Config:
     max_depth: int = 8
     layout: str = "{category}/{subcategory}/{filename}"
     people: list[str] = field(default_factory=list)
+    person_first_layout: bool = True
+    separate_whatsapp_junk: bool = True
+    enable_face_recognition: bool = True
+    dynamic_context_folders: bool = True
+    family_layout: bool = True
+    family_profile_path: Path = APP_DIR / "family.json"
+    detect_duplicates: bool = True
+    duplicate_folder: str = "Others"
     ignore_dirs: set[str] = field(default_factory=lambda: set(DEFAULT_IGNORE_DIRS))
     ignore_exts: set[str] = field(default_factory=lambda: set(DEFAULT_IGNORE_EXTS))
     ignore_names: set[str] = field(default_factory=lambda: set(DEFAULT_IGNORE_NAMES))
@@ -108,6 +121,14 @@ class Config:
             cfg_path = APP_DIR / "config.toml"
             if not cfg_path.exists() and (BUNDLE_DIR / "config.toml").exists():
                 cfg_path = BUNDLE_DIR / "config.toml"
+            # First run from a fresh clone: create the editable config from the
+            # checked-in example instead of silently scanning nothing.
+            example = APP_DIR / "config.example.toml"
+            if not cfg_path.exists() and example.exists():
+                try:
+                    shutil.copyfile(example, cfg_path)
+                except OSError:
+                    pass
         raw: dict = {}
         if cfg_path.exists():
             with cfg_path.open("rb") as fh:
@@ -119,7 +140,10 @@ class Config:
         llm_raw = raw.get("llm", {})
 
         cfg = cls()
-        cfg.app_dir = APP_DIR
+        cfg.config_path = cfg_path
+        # A config passed explicitly owns its own state/, reports/ and
+        # family.json, so demo/testing configs can never touch the real vault.
+        cfg.app_dir = cfg_path.parent if path else APP_DIR
 
         if general.get("vault"):
             cfg.vault = _expand(general["vault"], cfg.app_dir)
@@ -132,10 +156,21 @@ class Config:
         cfg.treat_projects_as_units = bool(general.get("treat_projects_as_units", True))
         cfg.move_projects = bool(general.get("move_projects", False))
         cfg.move_bundles = bool(general.get("move_bundles", True))
+        cfg.person_first_layout = bool(general.get("person_first_layout", True))
+        cfg.separate_whatsapp_junk = bool(general.get("separate_whatsapp_junk", True))
+        cfg.enable_face_recognition = bool(general.get("enable_face_recognition", True))
+        cfg.dynamic_context_folders = bool(general.get("dynamic_context_folders", True))
+        cfg.family_layout = bool(general.get("family_layout", True))
+        cfg.detect_duplicates = bool(general.get("detect_duplicates", True))
+        cfg.duplicate_folder = str(general.get("duplicate_folder", "Others"))
         if general.get("project_markers"):
             cfg.project_markers = {m.lower() for m in general["project_markers"]}
         if general.get("people"):
             cfg.people = [str(p).strip() for p in general["people"] if str(p).strip()]
+        else:
+            from .doc_intel import get_default_primary_user
+            primary = get_default_primary_user()
+            cfg.people = [primary] if primary else []
 
         cfg.layout = layout.get("pattern", cfg.layout)
 
@@ -169,6 +204,7 @@ class Config:
         # test config never writes into the real wardrobe's state.
         cfg.state_dir = cfg.app_dir / "state"
         cfg.report_dir = cfg.app_dir / "reports"
+        cfg.family_profile_path = cfg.app_dir / "family.json"
 
         local_tax = cfg.app_dir / "taxonomy.json"
         if local_tax.exists():

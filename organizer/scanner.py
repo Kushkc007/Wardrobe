@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import stat as statmod
 import time
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
@@ -105,15 +104,48 @@ def scan(cfg: Config, on_progress=None) -> tuple[list[FileInfo], list[str]]:
                 # A photo of a paper document is otherwise invisible. Only try
                 # OCR when the image is a candidate document/scan, not generic wallpapers or frame dumps:
                 stem_low = path.stem.lower()
-                doc_image_cands = ("scan", "doc", "bill", "receipt", "invoice", "aadhaar", "pan", "passport", "tax", "salary", "slip", "cert", "form", "statement", "resume")
-                is_doc_candidate = bool({"scan", "document"} & set(hints)) or any(k in stem_low for k in doc_image_cands)
-                if is_doc_candidate and not ({"photo", "wallpaper", "art"} & set(hints)):
+                path_str_low = str(path).lower()
+                doc_image_cands = (
+                    "scan", "doc", "bill", "receipt", "invoice", "aadhaar", "aadhar",
+                    "pan", "passport", "tax", "salary", "slip", "cert", "form",
+                    "statement", "resume", "marksheet", "degree", "prescription", "report",
+                    "voter", "license", "marks", "grade", "10th", "12th",
+                    "project", "subject", "topic", "nasa", "diagram", "architecture",
+                    "notes", "whiteboard", "spec", "api", "chemistry", "physics", "biology",
+                    "office", "presentation", "slide"
+                )
+                is_doc_candidate = (
+                    bool({"scan", "document"} & set(hints))
+                    or any(k in stem_low for k in doc_image_cands)
+                    or any(k in path_str_low for k in ("document", "scan", "aadhaar", "pan", "resume", "salary", "medical", "project", "subject", "office", "nasa"))
+                )
+                is_wa_cand = (
+                    "whatsapp" in path_str_low
+                    or "wa0" in stem_low
+                    or "img-wa" in stem_low
+                    or "greeting" in stem_low
+                    or "meme" in stem_low
+                    or "gm_" in stem_low
+                    or "suprabhat" in stem_low
+                )
+
+                if (is_doc_candidate and not ({"wallpaper", "art"} & set(hints))) or is_wa_cand:
                     from .ocr import ocr_any
+                    from .photo_intel import RE_GREETING, RE_MEME
+                    from .doc_intel import recognize_document
 
                     seen_text = ocr_any(path, max_chars=MAX_TEXT_BYTES)
-                    if len(seen_text) >= 24:
+                    if seen_text:
                         text = f"{seen_text}\n{text}"
-                        hints = list(dict.fromkeys(hints + ["scan", "document"]))
+                        doc_check = recognize_document(path.name, seen_text, str(path.parent))
+                        if doc_check.doc_type:
+                            hints = list(dict.fromkeys(hints + ["scan", "document"]))
+                        elif RE_GREETING.search(seen_text):
+                            hints = list(dict.fromkeys(hints + ["whatsapp_junk", "greeting"]))
+                        elif RE_MEME.search(seen_text):
+                            hints = list(dict.fromkeys(hints + ["whatsapp_junk", "meme"]))
+                        elif len(seen_text) >= 24:
+                            hints = list(dict.fromkeys(hints + ["scan", "document"]))
                 info = _info(path, root, st, text, "" if text else "no readable text")
                 info.hints = hints
                 files.append(info)

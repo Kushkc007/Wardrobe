@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
 [![Offline Safe](https://img.shields.io/badge/privacy-100%25%20Offline%20First-success.svg)]()
+[![Tests](https://github.com/Kushkc007/Wardrobe/actions/workflows/tests.yml/badge.svg)](https://github.com/Kushkc007/Wardrobe/actions/workflows/tests.yml)
 
 > **A human-centric, deterministic file organizer with a real-time web dashboard.**  
 > It reads your messy folders, understands what each file is **actually for**, and organizes everything into meaningful categories (e.g. `Money & Paperwork/Invoices & Receipts`, `Work & Clients/Contracts`, `Personal & Life/Identity`) — instead of useless dumping grounds like `PDF/`, `Images/`, or `2024/`.
@@ -31,11 +32,14 @@
    - [3. Connecting Cloud AI (OpenAI / Groq / OpenRouter)](#3-connecting-cloud-ai-openai--groq--openrouter)
    - [4. Setting Source Folders & Destination Vault](#4-setting-source-folders--destination-vault)
    - [5. Protecting Active Projects & Folders](#5-protecting-active-projects--workspaces)
-   - [6. Separating Family / Team Documents](#6-separating-family--team-member-documents)
+   - [6. The Family Brain (person-first, user-defined)](#6-the-family-brain-person-first-user-defined-dynamic-folders)
 5. [The Live Dashboard Control Room](#-the-live-dashboard-control-room)
 6. [The Wardrobe Brain (`taxonomy.json`)](#-the-wardrobe-brain-taxonomyjson)
 7. [Guaranteed Safety & Rollback](#-guaranteed-safety--rollback)
-8. [Building from Source](#-building-the-standalone-exe)
+8. [Demo Mode](#-demo-mode)
+9. [Repository Layout](#-repository-layout)
+10. [Development & Tests](#-development--tests)
+11. [Building the Standalone EXE](#-building-the-standalone-exe)
 
 ---
 
@@ -96,7 +100,7 @@ Choose whichever launch option fits your style:
 
 ### Option A: Standalone Executable (`Wardrobe.exe`)
 *Best for users who want zero installations or do not have Python installed.*
-1. Go to the `dist/` folder (or download `Wardrobe.exe` from Releases).
+1. Download the latest `Wardrobe.exe` from the [Releases](https://github.com/Kushkc007/Wardrobe/releases) page.
 2. Double-click **`Wardrobe.exe`**.
 3. It immediately starts the local server and opens your web browser to `http://127.0.0.1:8765`.
 
@@ -122,7 +126,10 @@ organize.cmd dashboard   :: Start the interactive web dashboard on localhost
 
 ## 🔌 How & Where to Connect (Configuration Guide)
 
-All settings are controlled by **`config.toml`**. You can edit it with any text editor (Notepad, VS Code, etc.).
+All settings are controlled by **`config.toml`**. On the first run it is created
+automatically from `config.example.toml`; you can then edit it with any text
+editor (Notepad, VS Code, etc.). `config.toml` is intentionally git-ignored so
+your personal paths never land in a commit.
 
 ### 1. 100% Offline Mode (Default — No Keys Needed)
 By default, Wardrobe runs completely offline using its built-in rule engine:
@@ -211,13 +218,94 @@ paths = [
 
 ---
 
-### 6. Separating Family / Team Member Documents
-If multiple people share the computer, Wardrobe can automatically identify their personal files (resumes, medical reports, salary slips, IDs) and organize them into separate subfolders:
+### 6. The Family Brain (person-first, user-defined, dynamic folders)
+
+Real family laptops are shared. Wardrobe treats **who a file belongs to** as the
+first question, then asks **what the file is**. Nothing about your family or
+your folders is hard-coded: you define people once in the dashboard's **Family**
+tab (or in `family.json`), and every scan uses those definitions. Folder names
+are not a fixed list either — they are learned from the files in the current
+scan and created on the spot.
+
 ```toml
 [general]
-people = ["Alex", "Jordan", "Sam"]
+family_layout = true       # <Person>/<label learned from the file>/..., Common/...
+detect_duplicates = true   # identical files are parked in Others/Duplicates
+enable_face_recognition = true
 ```
-Files matching these names will land under `Personal & Life/Identity/<Name>` or `Money & Paperwork/Salary/<Name>`.
+
+**What you can define per person** (Family tab → Edit Family):
+
+| Field | Example | Why it matters |
+|---|---|---|
+| Name | `Kushagra` | becomes the folder name |
+| Relationship | `self`, `Father`, `Mother`, `Bua` | resolves Papa/Mummy/Bhai from filenames |
+| Aliases | `Kush, Kushagra Chaturvedi` | catches short names and spellings |
+| Employers | `R1, Rubix, GDR` | company becomes a subfolder under the learned label |
+| Keywords | `batting, portfolio` | custom clues for hobbies or projects |
+| Rules | match `mahagun` → `Father/Documents/Job/Mahagun` | your own overrides win |
+
+The engine only chooses a person when the evidence is clear. It scores
+name/alias hits, employer hits, custom keywords, document headers (resume,
+Aadhaar, PAN, passport), face-recognition results, and parent-folder provenance.
+If two people tie, the file goes to `Others/Review` instead of being guessed.
+
+**Folder hierarchy is synthesised on the spot.** There is no fixed category
+list. The learner reads each file and derives a label from the file itself:
+
+| File in the scan | Learned label | Folder created |
+|---|---|---|
+| `Kush_R1_SalarySlip_Aug.pdf` | Salary Slip | `Kushagra/Salary Slip/R1/` |
+| `Papa_Aadhaar.pdf` | Aadhaar | `Manoj Kumar Chaturvedi/Aadhaar/` |
+| `property_papers_papa.pdf` | Property Papers | `Manoj Kumar Chaturvedi/Property Papers/` |
+| `Manoj_Mahagun_Site_Report.xlsx` | Site Report | `Manoj Kumar Chaturvedi/Site Report/Mahagun/` |
+| `NASA_JWST_Optical_Design.pdf` | NASA / James Webb Space Telescope | `Common/NASA/James Webb Space Telescope/` |
+| `Kush_wedding_haldi.jpg` | Wedding / Haldi | `Kushagra/Photos/Functions/Wedding/Haldi/` |
+
+Similar labels are clustered (`Salary Slip` / `Salary Slips`), and any new
+phrase becomes a new folder on the first move. People folders are equally
+dynamic: a detected person not yet in your profile gets their own folder, and
+you can rename or merge it later from the dashboard.
+
+```
+~/Organized/
+├── Kushagra/
+│   ├── Photos/
+│   │   ├── Personal/       (solo photos)
+│   │   ├── With Others/    (group photos)
+│   │   ├── Scenery/
+│   │   ├── Functions/Wedding/Haldi/
+│   │   └── Trips/Amritsar/
+│   ├── Resume/
+│   ├── Salary Slip/R1/
+│   ├── Signature/
+│   └── <any new label the files produce>/
+├── Manoj Kumar Chaturvedi/
+│   ├── Aadhaar/
+│   ├── Property Papers/
+│   └── Site Report/Mahagun/
+├── Common/
+│   ├── Books/  Passwords/  Screenshots/
+│   ├── Greetings/Good Morning/  Greetings/Good Night/
+│   ├── Greetings/Festivals/Diwali/
+│   ├── Jokes & Memes/
+│   └── Photos/Scenery/  Photos/With Others/
+└── Others/
+    ├── Review/             (unknown owner, kept safe)
+    └── Duplicates/         (exact copies, never deleted)
+```
+
+The folder names above are examples produced by the current scan, not a
+schema. Delete or rename them and the next scan learns the new names from the
+files again.
+
+**Duplicate safety:** only files that share a byte size are hashed, so large
+scans stay fast. Exact duplicates are moved to `Others/Duplicates` with a
+journal entry; the original stays in its proper person folder.
+
+**Face recognition** (optional, offline): OpenCV YuNet + SFace clusters photos
+by person and feeds the owner into the same hierarchy. When faces are not
+detected, filename evidence and `family.json` still decide.
 
 ---
 
@@ -225,12 +313,15 @@ Files matching these names will land under `Personal & Life/Identity/<Name>` or 
 
 Running `start.bat` or `Wardrobe.exe` opens the web control room at **`http://127.0.0.1:8765`**:
 
-1. **⚡ Live Sorting Chamber:** An animated hopper with live speed controls (1x, 2x, 5x, Max) where you watch incoming files glide into dynamically generated category folders.
-2. **📁 File Explorer & Validation Staging:** 
+1. **👨‍👩‍👧 Family Vault:** Person cards with file counts, a live folder tree, and a
+   file-manager explorer. Click any person or folder to browse its contents.
+   **Edit Family** lets you add people, aliases, employers, keywords and rules.
+2. **⚡ Live Sorting Chamber:** An animated hopper with live speed controls (1x, 2x, 5x, Max) where you watch incoming files glide into dynamically generated category folders.
+3. **📁 File Explorer & Validation Staging:**
    - View every file with its destination, preview thumbnail, and confidence score.
    - **Interactive Checkboxes:** All planned files are selected by default. Simply uncheck any file you wish to keep in place, then click **`[ 🚀 Move Allowed Files ]`**.
-3. **⧉ Duplicates & Review Station:** Identifies duplicate copies across different folders using cryptographic hashes, allowing 1-click duplicate isolation.
-4. **↺ Changes & Rollback Journal:** Complete audit trail of every file moved, with instant 1-click restoration.
+4. **⧉ Duplicates & Review Station:** Identifies duplicate copies across different folders using cryptographic hashes, allowing 1-click duplicate isolation.
+5. **↺ Changes & Rollback Journal:** Complete audit trail of every file moved, with instant 1-click restoration.
 
 ---
 
@@ -264,9 +355,106 @@ You can customize categories, subcategories, and keywords at any time by editing
 
 ---
 
-## 📦 Standalone Portable Executable
+## 🔨 Building the Standalone EXE
 
-A pre-compiled standalone **`Wardrobe.exe`** (requiring zero setup or Python installation) is available for direct download under the [Releases](https://github.com/Kushkc007/Wardrobe/releases) tab. Simply download and double-click to run!
+A pre-compiled standalone **`Wardrobe.exe`** (requiring zero setup or Python
+installation) is available under the [Releases](https://github.com/Kushkc007/Wardrobe/releases)
+tab. Download it and double-click to run.
+
+To build it yourself, install PyInstaller and run:
+
+```bash
+pip install pyinstaller
+pyinstaller Wardrobe.spec
+```
+
+The build output goes to `dist/` (git-ignored).
+
+---
+
+## 🧪 Demo Mode
+
+The repository ships with a disposable demo so you can see the whole engine
+without opening your real Downloads folder.
+
+```bash
+# 1. Build a sample Inbox + its own config and family profile
+python demo_live_setup.py
+
+# 2. Start the dashboard against the demo config (separate port)
+#    Windows PowerShell:
+$env:WARDROBE_CONFIG="demo_live/config.toml"; $env:WARDROBE_PORT="8899"; python -m dashboard.app
+#    Git Bash / macOS / Linux:
+WARDROBE_CONFIG=demo_live/config.toml WARDROBE_PORT=8899 python -m dashboard.app
+```
+
+Then open **http://127.0.0.1:8899**.
+
+- `demo_family_sort.py` runs a headless scan → plan → apply on 20 sample files
+  and prints the before/after tree.
+- `demo_present.py` drives a visible guided tour of every dashboard tab.
+- Everything is written to `demo_live/` (git-ignored); your real vault and
+  `family.json` are untouched.
+
+---
+
+## 📁 Repository Layout
+
+```text
+Wardrobe/
+├── organize.py              # CLI entry point (scan / plan / apply / undo / watch / dashboard)
+├── organizer/
+│   ├── config.py            # config loading, first-run config creation
+│   ├── scanner.py           # recursive scanner + project/archive awareness
+│   ├── doc_intel.py         # document text, entities, people, topics
+│   ├── labels.py            # on-the-spot folder-label learner (no fixed tree)
+│   ├── family.py            # person-first routing, aliases, common/duplicate rules
+│   ├── planner.py           # plan builder, duplicate hashing, destination synthesis
+│   ├── apply.py             # safe moves + undo journal
+│   ├── rules.py             # offline taxonomy rule engine
+│   ├── photo_intel.py       # EXIF, faces, screenshots, WhatsApp junk
+│   ├── ocr.py / textract.py # optional OCR / document text extraction
+│   └── report.py            # HTML review board
+├── dashboard/
+│   ├── app.py               # Flask API + live job runner
+│   ├── templates/index.html # single-page control room
+│   └── static/              # app.js + style.css
+├── tests/                   # 72 offline tests (pytest)
+├── demo_*.py                # safe demo scripts
+├── config.example.toml      # copy is auto-created as config.toml
+├── taxonomy.json            # fallback taxonomy when family_layout is off
+└── .github/workflows/       # CI: tests + critical lint
+```
+
+---
+
+## 🛠️ Development & Tests
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scriptsctivate
+# macOS/Linux: source .venv/bin/activate
+
+pip install -r requirements.txt pytest ruff
+python -m pytest tests -q
+node --check dashboard/static/app.js
+ruff check organizer dashboard organize.py --select F,E9
+```
+
+The test suite is fully offline and uses temporary directories. It covers the
+scanner, document intelligence, dynamic labels, family routing, duplicates,
+apply/undo, media and person documents.
+
+### Privacy / commit hygiene
+
+Never commit:
+
+- `config.toml` (personal paths)
+- `family.json` (real names, aliases, employers)
+- `state/`, `reports/` (inventories, plans, move journals)
+- API keys or `.env`
+
+These are already in `.gitignore`. The CI does not need any of them.
 
 ---
 

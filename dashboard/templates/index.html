@@ -40,6 +40,9 @@
     <button class="tab-btn" data-tab="explorer">
       <span class="tab-ico">📁</span> Explorer
     </button>
+    <button class="tab-btn" data-tab="family">
+      <span class="tab-ico">👨‍👩‍👧</span> Family
+    </button>
     <button class="tab-btn" data-tab="duplicates">
       <span class="tab-ico">⧉</span> Duplicates
       <span class="tab-count" id="navDupCount">0</span>
@@ -274,6 +277,9 @@
         </div>
         <nav class="tree" id="tree"></nav>
         <div class="sidefoot">
+          <select id="fPerson">
+            <option value="">All People / Family</option>
+          </select>
           <select id="fStatus">
             <option value="">Any status</option>
             <option value="ready">Ready</option>
@@ -518,6 +524,61 @@
             <!-- Rendered confidence meter -->
           </div>
         </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 7. FAMILY VAULT VIEW ==================== -->
+  <section class="page-view" id="page-family">
+    <div class="card family-head">
+      <div class="phead">
+        <div>
+          <h2>Family Vault</h2>
+          <span class="hint" id="familyHint">Person-first folders · your family, your rules</span>
+        </div>
+        <div class="family-actions">
+          <button class="btn ghost small" id="btnFamilyPlan">◈ Planned</button>
+          <button class="btn ghost small" id="btnFamilyVault">🗄 Vault</button>
+          <button class="btn primary small" id="btnFamilyEdit">✎ Edit Family</button>
+        </div>
+      </div>
+      <div class="family-people" id="familyPeople"></div>
+    </div>
+
+    <div class="family-body">
+      <aside class="card family-tree-card">
+        <div class="phead">
+          <div><h2>Folders</h2><span class="hint" id="familyTreeHint">click to open</span></div>
+        </div>
+        <div class="family-tree" id="familyTree"></div>
+      </aside>
+
+      <section class="card family-explorer">
+        <div class="phead">
+          <div>
+            <h2 id="famExpTitle">Explore</h2>
+            <span class="hint" id="famExpHint">—</span>
+          </div>
+        </div>
+        <div class="family-crumbs" id="familyCrumbs"></div>
+        <div class="family-listing" id="familyListing"></div>
+      </section>
+    </div>
+
+    <div class="card family-editor" id="familyEditor" hidden>
+      <div class="phead">
+        <div>
+          <h2>Family Settings</h2>
+          <span class="hint">Everything here is yours to define — people, aliases, employers, rules</span>
+        </div>
+        <button class="btn ghost small" id="btnFamilyClose">✕</button>
+      </div>
+      <div class="family-editor-body" id="familyEditorBody"></div>
+      <div class="family-editor-foot">
+        <button class="btn ghost small" id="btnAddPerson">＋ Add Person</button>
+        <button class="btn ghost small" id="btnAddRule">＋ Add Rule</button>
+        <span class="hint" id="familySaveHint"></span>
+        <button class="btn ok" id="btnFamilySave">✓ Save Family</button>
       </div>
     </div>
   </section>

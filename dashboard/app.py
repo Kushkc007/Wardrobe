@@ -21,6 +21,7 @@ from __future__ import annotations
 import collections
 import json
 import os
+import re
 import shutil
 import string
 import sys
@@ -38,9 +39,10 @@ from organizer.apply import apply_plan, undo_last  # noqa: E402
 from organizer.audit import run_audit  # noqa: E402
 from organizer.config import Config, load_taxonomy  # noqa: E402
 from organizer.planner import PlanItem, build_plan, to_json, safe_name  # noqa: E402
+from organizer.family import load_profile, save_profile, profile_path  # noqa: E402
 from organizer.report import write_report  # noqa: E402
 from organizer.scanner import FileInfo, scan, file_id  # noqa: E402
-from organizer.rules import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, ARCHIVE_EXTENSIONS, INSTALLER_EXTENSIONS, CODE_EXTENSIONS  # noqa: E402
+from organizer.rules import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, ARCHIVE_EXTENSIONS, INSTALLER_EXTENSIONS, CODE_EXTENSIONS  # noqa: E402
 
 if getattr(sys, "frozen", False):
     BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
@@ -66,7 +68,9 @@ _job: dict = {
 def cfg() -> Config:
     global _cfg
     if _cfg is None:
-        _cfg = Config.load()
+        # WARDROBE_CONFIG lets a demo / alternate profile run without touching
+        # the real family.json, vault or state.
+        _cfg = Config.load(os.environ.get("WARDROBE_CONFIG") or None)
         _cfg.ensure_dirs()
     return _cfg
 
@@ -237,6 +241,47 @@ def _duplicates(c: Config) -> list[dict]:
                     return groups
         except (OSError, json.JSONDecodeError):
             pass
+
+    # Plan-based duplicates (available as soon as a plan exists, and still
+    # correct after files have been moved into Others/Duplicates).
+    items = _plan_items(c)
+    if items:
+        by_original: dict[str, list[PlanItem]] = collections.defaultdict(list)
+        for it in items:
+            if getattr(it, "duplicate_of", ""):
+                by_original[it.duplicate_of].append(it)
+        groups = []
+        for original_id, dups in by_original.items():
+            original = next(
+                (x for x in items if x.id == original_id or x.source == original_id),
+                None,
+            )
+            members = ([original] if original else []) + dups
+            entries = []
+            for x in members:
+                src = Path(x.source)
+                dst = Path(x.destination)
+                p = dst if (not src.exists() and dst.exists()) else src
+                ext = p.suffix.lower()
+                entries.append({
+                    "id": x.id,
+                    "path": str(p),
+                    "name": p.name,
+                    "ext": ext,
+                    "size": x.size,
+                    "thumb": ext in THUMBABLE,
+                    "exists": p.exists(),
+                })
+            if entries:
+                size = max(e["size"] for e in entries)
+                groups.append({
+                    "files": entries,
+                    "size": size,
+                    "wasted": size * (len(entries) - 1),
+                })
+        if groups:
+            groups.sort(key=lambda g: -g["wasted"])
+            return groups
 
     # Quick fallback duplicate scanner from inventory by size & name if audit hasn't run
     inv_files = _inventory_files(c)
@@ -424,11 +469,19 @@ def api_overview():
         else:
             bucket["low"] += 1
 
+    people_stats: dict[str, int] = collections.defaultdict(int)
+    for item in items:
+        p = getattr(item, "person", "").strip()
+        if p:
+            people_stats[p] += 1
+
     return jsonify({
         "generated": time.time(),
         "files": len(items),
         "bytes": total_bytes,
         "categories": categories,
+        "people": getattr(c, "people", []),
+        "people_stats": dict(people_stats),
         "confidence": bucket,
         "status": status,
         "vault": vault,
@@ -456,6 +509,7 @@ def api_files():
     category = (request.args.get("category") or "").strip()
     subcategory = (request.args.get("sub") or "").strip()
     status = (request.args.get("status") or "").strip()
+    person = (request.args.get("person") or "").strip()
     sort = (request.args.get("sort") or "name").strip()
     page = max(1, request.args.get("page", 1, type=int))
     per = min(500, max(5, request.args.get("per", 60, type=int)))
@@ -484,15 +538,18 @@ def api_files():
             "status": item.status,
             "is_dir": item.is_dir,
             "dest_rel": _rel(c, item.destination),
+            "person": getattr(item, "person", ""),
         }
         if q and q not in (name + " " + item.source + " " + item.category + " "
-                           + item.subcategory + " " + item.reason).lower():
+                           + item.subcategory + " " + item.reason + " " + getattr(item, "person", "")).lower():
             continue
         if category and item.category != category:
             continue
         if subcategory and item.subcategory != subcategory:
             continue
         if status and item.status != status:
+            continue
+        if person and getattr(item, "person", "").lower() != person.lower():
             continue
         rows.append(row)
 
@@ -703,7 +760,11 @@ def api_simulation_data():
     steps = []
     for idx, it in enumerate(items[:600]):  # High impact animation cohort
         is_dup = it.source.lower() in dup_paths
-        dest_folder = f"{it.category} / {it.subcategory}"
+        rel_dest = _plan_rel(c, it.destination)
+        if rel_dest and len(rel_dest.parts) > 1:
+            dest_folder = " / ".join(rel_dest.parts[:-1])
+        else:
+            dest_folder = f"{it.category} / {it.subcategory}"
         folders.add(dest_folder)
         p = Path(it.source)
         rel_folder = str(p.parent.relative_to(p.anchor)) if p.is_absolute() else str(p.parent)
@@ -737,7 +798,6 @@ def api_simulation_data():
 def api_live_stream():
     """Server-Sent Events streaming live folder traversal, file moves, and duplicates."""
     c = cfg()
-    mode = request.args.get("mode", "simulate")
     items = _plan_items(c)
     dups = _duplicates(c)
     dup_paths = set()
@@ -763,7 +823,11 @@ def api_live_stream():
                 time.sleep(0.02)
 
             # Step 2: Folder creation event if new folder
-            dest_folder = f"{item.category} / {item.subcategory}"
+            rel_dest = _plan_rel(c, item.destination)
+            if rel_dest and len(rel_dest.parts) > 1:
+                dest_folder = " / ".join(rel_dest.parts[:-1])
+            else:
+                dest_folder = f"{item.category} / {item.subcategory}"
             if dest_folder not in created_folders:
                 created_folders.add(dest_folder)
                 yield f"data: {json.dumps({'type': 'folder_create', 'category': item.category, 'subcategory': item.subcategory, 'name': dest_folder})}\n\n"
@@ -800,6 +864,9 @@ def api_settings_get():
         "move_projects": c.move_projects,
         "llm_enabled": c.llm.enabled,
         "llm_model": c.llm.model,
+        "family_layout": getattr(c, "family_layout", True),
+        "family_profile": str(profile_path(c)),
+        "family_people": [p.name for p in load_profile(c).people],
     })
 
 
@@ -973,6 +1040,284 @@ def api_tree():
     return jsonify({"plan": out, "vault": vault})
 
 
+# ---------------------------------------------------------------------------
+#  Family view: owners, dynamic folder tree, file-manager explorer, settings
+# ---------------------------------------------------------------------------
+
+def _plan_rel(c: Config, dest: str) -> Path | None:
+    vault = str(c.vault).rstrip("/" + chr(92))
+    text = str(dest)
+    if text.lower().startswith(vault.lower() + "\\") or text.lower().startswith(vault.lower() + "/"):
+        rel = text[len(vault) + 1:]
+        return Path(rel) if rel else None
+    return None
+
+
+def _new_node(name: str, rel: str) -> dict:
+    return {"name": name, "path": rel, "folders": {}, "files": [], "count": 0, "bytes": 0}
+
+
+def _plan_tree(c: Config, items: list[PlanItem]) -> dict:
+    root = _new_node("", "")
+    for it in items:
+        rel = _plan_rel(c, it.destination)
+        if rel is None:
+            continue
+        node = root
+        node["count"] += 1
+        node["bytes"] += it.size
+        for part in rel.parts[:-1]:
+            child = node["folders"].setdefault(
+                part, _new_node(part, str(Path(node["path"]) / part) if node["path"] else part))
+            child["count"] += 1
+            child["bytes"] += it.size
+            node = child
+        node["files"].append({
+            "id": it.id, "name": rel.name, "path": str(rel).replace("\\", "/"), "size": it.size,
+            "ext": Path(it.destination).suffix.lower(), "person": it.person,
+            "status": it.status, "confidence": it.confidence,
+            "category": it.category, "subcategory": it.subcategory,
+        })
+    return root
+
+
+def _vault_tree(c: Config) -> dict:
+    now = time.time()
+    cached = _cache.get("vault_tree")
+    if cached and cached[0] > now - 20:
+        return cached[1]
+    root = _new_node("", "")
+    if not c.vault.exists():
+        return root
+    for p in c.vault.rglob("*"):
+        try:
+            if not p.is_file():
+                continue
+            rel = p.relative_to(c.vault)
+            size = p.stat().st_size
+        except OSError:
+            continue
+        node = root
+        root["count"] += 1
+        root["bytes"] += size
+        for part in rel.parts[:-1]:
+            child = node["folders"].setdefault(
+                part, _new_node(part, str(Path(node["path"]) / part) if node["path"] else part))
+            child["count"] += 1
+            child["bytes"] += size
+            node = child
+        node["files"].append({
+            "name": p.name, "path": str(rel).replace("\\", "/"), "size": size,
+            "ext": p.suffix.lower(), "mtime": p.stat().st_mtime,
+        })
+    _cache["vault_tree"] = (now, root)
+    return root
+
+
+def _tree_json(node: dict, depth: int = 5, include_files: bool = False) -> dict:
+    folders = []
+    if depth > 0:
+        names = sorted(node["folders"], key=lambda n: (-node["folders"][n]["count"], n.lower()))
+        for name in names[:60]:
+            folders.append(_tree_json(node["folders"][name], depth - 1, include_files))
+    files = sorted(node["files"], key=lambda f: f["name"].lower()) if include_files else []
+    return {
+        "name": node["name"], "path": node["path"],
+        "count": node["count"], "bytes": node["bytes"],
+        "folders": folders, "files": files[:60], "file_count": len(node["files"]),
+    }
+
+
+@app.get("/api/family")
+def api_family():
+    c = cfg()
+    try:
+        stamp = (c.state_file("plan.json").stat().st_mtime,
+                 profile_path(c).stat().st_mtime if profile_path(c).exists() else 0)
+    except OSError:
+        stamp = (0, 0)
+    cached = _cache.get("family_payload")
+    if cached and cached[0] == stamp and cached[1] > time.time() - 6:
+        return jsonify(cached[2])
+    profile = load_profile(c)
+    items = _plan_items(c)
+    plan = _plan_tree(c, items)
+    vault = _vault_tree(c)
+
+    people: dict[str, dict] = {}
+    for p in profile.people:
+        people[p.name] = {
+            "name": p.name, "relationship": p.relationship,
+            "aliases": p.aliases, "companies": p.companies,
+            "keywords": p.keywords, "files": 0, "bytes": 0, "folders": 0,
+        }
+    common = {"name": profile.common_folder, "files": 0, "bytes": 0, "folders": 0}
+    others = {"name": profile.unknown_folder, "files": 0, "bytes": 0, "folders": 0}
+
+    for top_name, node in plan["folders"].items():
+        if top_name == profile.common_folder:
+            common["files"] += node["count"]
+            common["bytes"] += node["bytes"]
+            common["folders"] += 1
+        elif top_name == profile.unknown_folder or top_name in {"Unsorted", "Others"}:
+            others["files"] += node["count"]
+            others["bytes"] += node["bytes"]
+            others["folders"] += 1
+        else:
+            rec = people.setdefault(top_name, {
+                "name": top_name, "relationship": "", "aliases": [], "companies": [],
+                "keywords": [], "files": 0, "bytes": 0, "folders": 0,
+            })
+            rec["files"] += node["count"]
+            rec["bytes"] += node["bytes"]
+            rec["folders"] += 1
+
+    if vault["folders"]:
+        for name, node in vault["folders"].items():
+            if name in people:
+                people[name]["vault_files"] = node["count"]
+            elif name == profile.common_folder:
+                common["vault_files"] = node["count"]
+            elif name in {profile.unknown_folder, "Unsorted", "Others"}:
+                others["vault_files"] = node["count"]
+
+    payload = {
+        "profile_file": str(profile_path(c)),
+        "profile": {
+            "enabled": profile.enabled,
+            "common_folder": profile.common_folder,
+            "unknown_folder": profile.unknown_folder,
+            "shared_album": profile.shared_album,
+            "people": [
+                {"name": p.name, "relationship": p.relationship, "aliases": p.aliases,
+                 "companies": p.companies, "keywords": p.keywords, "notes": p.notes}
+                for p in profile.people
+            ],
+            "rules": [
+                {"match": r.match, "person": r.person, "section": r.section,
+                 "path": r.path, "confidence": r.confidence}
+                for r in profile.rules
+            ],
+        },
+        "people": sorted(people.values(), key=lambda d: (-d["files"], d["name"].lower())),
+        "common": common,
+        "others": others,
+        "plan_tree": _tree_json(plan),
+        "vault_tree": _tree_json(vault),
+        "totals": {"planned": len(items), "vault_files": vault["count"]},
+    }
+    _cache["family_payload"] = (stamp, time.time(), payload)
+    return jsonify(payload)
+
+
+@app.get("/api/family/profile")
+def api_family_profile_get():
+    return api_family()
+
+
+@app.post("/api/family/profile")
+def api_family_profile_save():
+    body = request.get_json(silent=True) or {}
+    c = cfg()
+    save_profile(c, body)
+    _cache.pop("family_payload", None)
+    _cache.pop("plan_items", None)
+    try:
+        profile = load_profile(c)
+        names = [p.name for p in profile.people]
+        if names:
+            c.people = names
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.get("/api/explore")
+def api_explore():
+    c = cfg()
+    rel = (request.args.get("path") or "").strip().strip("/\\")
+    source = (request.args.get("source") or "vault").strip().lower()
+
+    if source == "plan":
+        prefix_parts = [p for p in rel.replace("\\", "/").split("/") if p]
+        folders: dict[str, dict] = {}
+        files = []
+        total = 0
+        total_bytes = 0
+        for it in _plan_items(c):
+            item_rel = _plan_rel(c, it.destination)
+            if item_rel is None:
+                continue
+            parts = list(item_rel.parts)
+            if len(parts) < len(prefix_parts) or parts[:len(prefix_parts)] != prefix_parts:
+                continue
+            total += 1
+            total_bytes += it.size
+            rest = parts[len(prefix_parts):]
+            if len(rest) > 1:
+                child = folders.setdefault(rest[0], {"name": rest[0], "files": 0, "bytes": 0, "children": set()})
+                child["files"] += 1
+                child["bytes"] += it.size
+                if len(rest) > 2:
+                    child["children"].add(rest[1])
+            elif len(rest) == 1:
+                files.append({
+                    "id": it.id, "name": rest[0], "path": str(item_rel).replace("\\", "/"),
+                    "size": it.size, "ext": Path(it.destination).suffix.lower(),
+                    "person": it.person, "status": it.status,
+                    "confidence": it.confidence, "category": it.category,
+                    "subcategory": it.subcategory,
+                })
+        folder_list = [
+            {"name": n, "path": str(Path(rel) / n) if rel else n,
+             "files": f["files"], "bytes": f["bytes"], "children": len(f["children"])}
+            for n, f in sorted(folders.items(), key=lambda kv: (-kv[1]["files"], kv[0].lower()))
+        ]
+        return jsonify({"source": "plan", "path": rel,
+                        "breadcrumb": prefix_parts,
+                        "folders": folder_list, "files": files[:500],
+                        "count": total, "bytes": total_bytes})
+
+    vault = c.vault.resolve()
+    if not vault.exists():
+        return jsonify({"source": "vault", "path": "", "breadcrumb": [], "folders": [],
+                        "files": [], "count": 0, "bytes": 0, "exists": False})
+    target = (vault / rel).resolve() if rel else vault
+    if target != vault and vault not in target.parents:
+        abort(403)
+    if not target.exists() or not target.is_dir():
+        return jsonify({"error": "folder not found", "path": rel}), 404
+    folders = []
+    files = []
+    try:
+        for entry in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
+            try:
+                st = entry.stat()
+            except OSError:
+                continue
+            child_rel = str(entry.relative_to(vault)).replace("\\", "/")
+            if entry.is_dir():
+                fcount = bcount = 0
+                try:
+                    for fp in entry.rglob("*"):
+                        if fp.is_file():
+                            fcount += 1
+                            bcount += fp.stat().st_size
+                except OSError:
+                    pass
+                folders.append({"name": entry.name, "path": child_rel,
+                                "files": fcount, "bytes": bcount})
+            else:
+                files.append({"name": entry.name, "path": child_rel, "size": st.st_size,
+                              "ext": entry.suffix.lower(), "mtime": st.st_mtime})
+    except OSError as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"source": "vault", "path": rel,
+                    "breadcrumb": [p for p in rel.split("/") if p],
+                    "folders": folders, "files": files[:500],
+                    "count": len(files), "bytes": sum(f["size"] for f in files)})
+
+
 @app.post("/api/move")
 def api_move():
     body = request.get_json(silent=True) or {}
@@ -1004,7 +1349,11 @@ def api_move():
         item.method = "manual"
         item.reason = "moved by user in dashboard"
         if not item.is_dir:
-            dest = c.vault / safe_name(category) / safe_name(subcategory) / safe_name(Path(item.source).name)
+            if getattr(c, "family_layout", True) and item.person:
+                dest = (c.vault / safe_name(item.person) / safe_name(category)
+                        / safe_name(subcategory) / safe_name(Path(item.source).name))
+            else:
+                dest = c.vault / safe_name(category) / safe_name(subcategory) / safe_name(Path(item.source).name)
             item.destination = str(dest)
             item.status = "ready"
         changed += 1
@@ -1483,10 +1832,10 @@ def _undo_job(c: Config) -> None:
 
 
 def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = False) -> None:
-    print(f"\n  =======================================================")
-    print(f"  ⚡ Wardrobe Live Dashboard  ->  http://{host}:{port}")
-    print(f"  Exact Claude Photo Sorter Experience with Real-Time Sorting")
-    print(f"  =======================================================\n")
+    print("\n  =======================================================")
+    print(f"  Wardrobe Live Dashboard  ->  http://{host}:{port}")
+    print("  Exact Claude Photo Sorter Experience with Real-Time Sorting")
+    print("  =======================================================\n")
     if open_browser:
         import webbrowser
         def _open():
@@ -1500,4 +1849,4 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = False)
 
 
 if __name__ == "__main__":
-    serve(port=int(os.environ.get("WARDROBE_PORT", 8765)))
+    serve(port=int(os.environ.get("WARDROBE_PORT", "8765")))

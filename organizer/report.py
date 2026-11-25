@@ -93,14 +93,15 @@ def write_report(items: list[PlanItem], stats: dict, out: Path, vault: Path) -> 
                     dest_html = f'<div class="dest">→ {esc(rel(vault, it.destination))}</div>'
                 kind = ""
                 if it.is_dir:
-                    kind = f'<span class="tag">folder</span> '
+                    kind = '<span class="tag">folder</span> '
+                person_badge = f'<span class="tag" style="background:#26354a;color:#93c5fd;font-weight:600">👤 {esc(it.person)}</span> ' if getattr(it, "person", "") else ""
                 parts.append(
                     f'<tr data-s="{esc_attr(search)}">'
                     f'<td style="width:58%"><div class="fn">{esc(Path(it.source).name)}</div>'
                     f'<div class="meta">{esc(str(Path(it.source).parent))}</div></td>'
                     f'<td>{dest_html}'
                     f'<div class="meta"><span class="pill {cls}">{it.confidence:.0%}</span> '
-                    f'{kind}<span class="tag">{esc(it.method)}</span> {esc(it.reason)}</div></td></tr>'
+                    f'{person_badge}{kind}<span class="tag">{esc(it.method)}</span> {esc(it.reason)}</div></td></tr>'
                 )
         parts.append("</table></section>")
 

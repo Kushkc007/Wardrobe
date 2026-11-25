@@ -53,7 +53,31 @@ move_projects = false
 # If multiple family members / users share this PC, list their names here!
 # Files matching their names (Resumes, Salary slips, Passports, Aadhaar, IDs, etc.)
 # will automatically be separated into their own subfolders instead of mixing!
-people = ["Alex", "Sam"]
+# Optional quick hints. The real family registry is family.json (or the
+# dashboard's Family tab) so nothing is hard-coded here.
+people = []
+
+# Enable smart person-first hierarchical folders for family documents:
+# e.g. Kush/Resume, Kush/Biometrics, Father/Biometrics, Father/Health, Mother/Education
+person_first_layout = true
+
+# Person-first family brain: <Person>/Photos/<...>, <Person>/<learned label>/...
+# Common/<learned label>, Others/Review. Folder labels come from the files.
+# People, aliases, employers and custom rules live in family.json and are
+# edited from the dashboard - nothing about your family is hard-coded.
+family_layout = true
+
+# Hash identical files (only same-size candidates) and park extra copies in
+# Others/Duplicates so nothing is silently lost.
+detect_duplicates = true
+duplicate_folder = "Others"
+
+# Automatically isolate WhatsApp Good Morning greetings, festival wishes, and memes
+# into WhatsApp_Junk/Greetings and WhatsApp_Junk/Memes
+separate_whatsapp_junk = true
+
+# Offline Google Photos-style face detection & recognition for personal photos
+enable_face_recognition = true
 
 # Add or remove markers here if you have unusual project types.
 # project_markers = [".git", "package.json", "pyproject.toml", "go.mod"]

@@ -2041,3 +2041,144 @@ input[type="search"]:focus, select:focus { border-color: var(--accent); }
   border-radius: 6px !important;
   cursor: pointer;
 }
+
+/* ==========================================================================
+   FAMILY VAULT
+   ========================================================================== */
+
+.family-head { margin-bottom: 18px; }
+.family-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.family-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.fam-person-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg2);
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+.fam-person-card:hover,
+.fam-person-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: var(--card-hover);
+  outline: none;
+}
+.fam-avatar {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+}
+.fam-shared .fam-avatar { background: linear-gradient(135deg, #0ea5e9, #10b981); }
+.fam-unknown .fam-avatar { background: linear-gradient(135deg, #64748b, #334155); }
+.fam-empty .fam-avatar { background: linear-gradient(135deg, var(--warn), var(--bad)); }
+.fam-person-meta { min-width: 0; }
+.fam-person-name { font-weight: 650; font-size: 13.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fam-rel {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 40%, transparent);
+  padding: 1px 6px; border-radius: 999px;
+}
+.fam-aliases { font-size: 11px; color: var(--faint); margin-top: 3px; overflow-wrap: anywhere; }
+.fam-person-count { font-size: 11px; color: var(--dim); margin-top: 6px; }
+.fam-person-count b { color: var(--txt); }
+
+.family-body {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.family-tree-card { max-height: 70vh; overflow: auto; position: sticky; top: 12px; }
+.family-tree-card .phead { position: sticky; top: 0; z-index: 2; background: var(--card-solid); }
+.family-tree { padding: 10px 12px 16px; font-size: 12.5px; }
+.fam-node details { margin: 1px 0; }
+.fam-node summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px; border-radius: 7px; color: var(--dim);
+}
+.fam-node summary::-webkit-details-marker { display: none; }
+.fam-node summary::before { content: '▸'; color: var(--faint); font-size: 10px; transition: transform .12s; }
+.fam-node details[open] > summary::before { transform: rotate(90deg); }
+.fam-node summary:hover { background: var(--sel); color: var(--txt); }
+.fam-folder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fam-folder-count { margin-left: auto; font-size: 10px; color: var(--faint); background: var(--bg3); padding: 1px 6px; border-radius: 999px; }
+.fam-node-kids { margin-left: 12px; border-left: 1px dashed var(--line); padding-left: 4px; }
+
+.family-explorer { min-height: 420px; }
+.family-crumbs {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.fam-crumb {
+  background: none; border: 0; color: var(--accent2); cursor: pointer;
+  padding: 3px 6px; border-radius: 6px; font: inherit;
+}
+.fam-crumb:hover { background: var(--sel); }
+.fam-crumb-sep { color: var(--faint); }
+.family-listing { padding: 8px 10px 16px; }
+.fam-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; font-size: 12.5px;
+  border-bottom: 1px solid var(--line);
+}
+.fam-row:last-child { border-bottom: 0; }
+.fam-row-folder { cursor: pointer; }
+.fam-row-folder:hover { background: var(--sel); }
+.fam-row-ico { width: 20px; text-align: center; }
+.fam-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fam-row-meta { margin-left: auto; font-size: 11px; color: var(--faint); white-space: nowrap; }
+.fam-row-arrow { color: var(--faint); font-size: 16px; }
+.fam-status {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em;
+  padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim);
+}
+.fam-status.ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.fam-status.low_confidence { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.fam-empty-tree { padding: 40px 20px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.8; }
+
+.family-editor { margin-top: 18px; }
+.family-editor-body { padding: 16px; display: grid; gap: 14px; }
+.fam-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.fam-editor-grid label { display: grid; gap: 5px; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.fam-editor-grid input,
+.fam-editor-row input {
+  background: var(--bg2); border: 1px solid var(--line2); color: var(--txt);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px; font-family: inherit;
+}
+.fam-editor-grid input:focus,
+.fam-editor-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.fam-editor-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+.fam-editor-head h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); }
+.fam-editor-row {
+  display: grid; grid-template-columns: 1.2fr 1fr 1.4fr 1.3fr 1.3fr auto;
+  gap: 8px; align-items: center;
+}
+.fam-rule-row { grid-template-columns: 1.6fr 1fr 1.6fr auto; }
+.fam-editor-row .fam-remove { color: var(--bad); }
+.family-editor-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 14px 16px; border-top: 1px solid var(--line);
+}
+.family-editor-foot .hint { margin-left: auto; }
+
+@media (max-width: 980px) {
+  .family-body { grid-template-columns: 1fr; }
+  .family-tree-card { position: static; max-height: 320px; }
+  .fam-editor-row, .fam-rule-row { grid-template-columns: 1fr 1fr; }
+  .fam-editor-row .fam-remove, .fam-rule-row .fam-remove { grid-column: span 2; }
+}

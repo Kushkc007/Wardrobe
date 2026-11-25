@@ -914,6 +914,68 @@
       ]
     },
     {
+      "name": "WhatsApp Junk",
+      "description": "Forwarded clutter, Good Morning greetings, motivational quotes, and memes received from messaging apps.",
+      "subcategories": [
+        {
+          "name": "Greetings",
+          "keywords": [
+            "good morning",
+            "good night",
+            "good evening",
+            "suprabhat",
+            "shubh prabhat",
+            "shubh ratri",
+            "radhe radhe",
+            "jai shri krishna",
+            "jai shree ram",
+            "namaskar",
+            "pranam",
+            "happy birthday",
+            "happy anniversary",
+            "happy new year",
+            "happy diwali",
+            "happy holi",
+            "thought of the day",
+            "daily quote",
+            "motivational quote",
+            "blessings",
+            "god bless you",
+            "forwarded as received"
+          ],
+          "extensions": [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".gif"
+          ]
+        },
+        {
+          "name": "Memes",
+          "keywords": [
+            "meme",
+            "memes",
+            "when you",
+            "me trying to",
+            "nobody",
+            "pov",
+            "that moment when",
+            "humor",
+            "joke"
+          ],
+          "extensions": [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".mp4",
+            ".gif"
+          ]
+        }
+      ]
+    },
+    {
       "name": "Unsorted",
       "description": "Could not be confidently placed. Review these by hand and teach the taxonomy.",
       "subcategories": [

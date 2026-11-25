@@ -17,6 +17,7 @@ const state = {
   sub: '',
   q: '',
   status: '',
+  person: '',
   sort: 'name',
   selected: new Set(),
   lastIndex: -1,
@@ -46,6 +47,8 @@ function fmtBytes(n) {
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
   return (v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)) + ' ' + u[i];
 }
+
+function plural(n, word) { return `${n} ${word}${Number(n) === 1 ? '' : 's'}`; }
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
@@ -114,6 +117,8 @@ function switchTab(tabId) {
     loadStatsPage();
   } else if (tabId === 'settings') {
     loadSettingsPage();
+  } else if (tabId === 'family') {
+    loadFamilyPage();
   }
 }
 
@@ -142,6 +147,19 @@ async function loadOverview() {
 
   buildMoveCategories(o.categories);
   renderTree(o.categories);
+
+  if (o.people_stats && $('fPerson')) {
+    const sel = $('fPerson');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All People / Family</option>';
+    for (const [pname, cnt] of Object.entries(o.people_stats)) {
+      const opt = document.createElement('option');
+      opt.value = pname;
+      opt.textContent = `👤 ${pname} (${cnt})`;
+      sel.appendChild(opt);
+    }
+    sel.value = current;
+  }
 }
 
 // ==========================================================================
@@ -356,19 +374,22 @@ function getOrCreateFolderCard(category, subcategory, fullFolder) {
   card.className = 'folder-card';
   card.dataset.folder = fullFolder;
   card.dataset.count = '0';
+  const bits = String(fullFolder).split(' / ').filter(Boolean);
+  const leaf = bits.length > 1 ? bits.slice(-2).join(' / ') : String(subcategory || category);
+  const trail = bits.length > 2 ? bits.slice(0, -2).join(' · ') : String(category);
   card.innerHTML = `
     <div class="f-icon">${getCategoryIcon(category)}</div>
     <div class="f-info">
-      <div class="f-name">${esc(subcategory || category)}</div>
-      <div class="f-sub">${esc(category)}</div>
+      <div class="f-name">${esc(leaf)}</div>
+      <div class="f-sub">${esc(trail)}</div>
     </div>
     <div class="f-badge ok">0 items</div>
   `;
 
-  // Click folder card to view in explorer
+  // Click folder card -> open the same path in the Family explorer
   card.addEventListener('click', () => {
-    switchTab('explorer');
-    pickFolder(category, subcategory);
+    switchTab('family');
+    setTimeout(() => exploreFamily(String(fullFolder).split(' / ').join('/'), 'plan'), 250);
   });
 
   $('foldersGrid').appendChild(card);
@@ -627,7 +648,7 @@ if (btnLive) {
   btnLive.addEventListener('click', async () => {
     switchTab('live');
     let j;
-    try { j = await api('/api/job'); } catch (e) {}
+    try { j = await api('/api/job'); } catch (e) { }
     if (j && j.state === 'running') {
       toast(`Active job running: ${j.action.toUpperCase()} (${j.message}). Streaming into chamber...`, 'ok');
       pollJob();
@@ -724,7 +745,7 @@ function buildMoveCategories(categories) {
 async function loadFiles() {
   const qs = new URLSearchParams({
     q: state.q, category: state.category, sub: state.sub,
-    status: state.status, sort: state.sort,
+    status: state.status, sort: state.sort, person: state.person || '',
     page: state.page, per: state.per,
   });
   let data;
@@ -787,7 +808,8 @@ function renderGrid() {
       media = `<div class="fallback">${esc(initials(f.ext))}</div>`;
     }
 
-    const destFolder = f.subcategory ? `${f.category} / ${f.subcategory}` : (f.category || 'Vault');
+    const destFolder = f.dest_rel || (f.subcategory ? `${f.category} / ${f.subcategory}` : (f.category || 'Vault'));
+    const personBadge = f.person ? `<div class="person-tag" style="font-size:10px;color:#93c5fd;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">👤 ${esc(f.person)}</div>` : '';
     card.innerHTML = `
       <div class="thumb">${media}
         <div class="tile-check ${isSelected ? 'checked' : ''}" title="Uncheck to exclude from moving">
@@ -797,7 +819,8 @@ function renderGrid() {
         ${f.status === 'protected' ? '<span class="pin" title="kept in place">⚓</span>' : ''}
       </div>
       <div class="tname">${esc(f.name)}</div>
-      <div class="tdest"><span class="dest-arrow">➔</span> ${esc(destFolder)}</div>`;
+      <div class="tdest"><span class="dest-arrow">➔</span> ${esc(destFolder)}</div>
+      ${personBadge}`;
 
     card.addEventListener('click', (ev) => {
       const isCheckClick = ev.target.closest('.tile-check');
@@ -1356,6 +1379,343 @@ async function loadStatsPage() {
 }
 
 // ==========================================================================
+// 7. FAMILY VAULT — people, dynamic folders, file-manager explorer, settings
+// ==========================================================================
+
+const familyState = {
+  data: null,
+  profile: null,
+  source: 'plan',
+  path: '',
+};
+
+async function loadFamilyPage() {
+  let d;
+  try {
+    d = await api('/api/family');
+  } catch (e) {
+    toast('Could not load family view', 'bad');
+    return;
+  }
+  familyState.data = d;
+  familyState.profile = d.profile;
+  familyState.source = familyState.source || 'plan';
+  $('familyHint').textContent =
+    `${d.totals.planned} planned · ${d.totals.vault_files} in vault · ${d.profile.people.length} people defined`;
+  renderFamilyPeople();
+  renderFamilyTree();
+  exploreFamily(familyState.path, familyState.source);
+}
+
+function renderFamilyPeople() {
+  const d = familyState.data;
+  const host = $('familyPeople');
+  if (!host || !d) return;
+
+  const cards = [];
+  for (const p of d.people) {
+    const rel = p.relationship ? `<span class="fam-rel">${esc(p.relationship)}</span>` : '';
+    const alias = (p.aliases || []).length
+      ? `<div class="fam-aliases">aka ${p.aliases.map(esc).join(', ')}</div>` : '';
+    const comp = (p.companies || []).length
+      ? `<div class="fam-aliases">works: ${p.companies.map(esc).join(', ')}</div>` : '';
+    cards.push(`
+      <article class="fam-person-card" data-path="${esc(p.name)}" role="button" tabindex="0">
+        <div class="fam-avatar">${esc((p.name || '?').slice(0, 1).toUpperCase())}</div>
+        <div class="fam-person-meta">
+          <div class="fam-person-name">${esc(p.name)} ${rel}</div>
+          ${alias}${comp}
+          <div class="fam-person-count"><b>${plural(p.files || 0, 'file')}</b> · ${plural(p.folders || 0, 'top folder')}${p.vault_files ? ` · ${plural(p.vault_files, 'file')} in vault` : ''}</div>
+        </div>
+      </article>`);
+  }
+
+  const common = d.common;
+  cards.push(`
+    <article class="fam-person-card fam-shared" data-path="${esc(common.name)}" role="button" tabindex="0">
+      <div class="fam-avatar">🤝</div>
+      <div class="fam-person-meta">
+        <div class="fam-person-name">${esc(common.name)} <span class="fam-rel">shared</span></div>
+        <div class="fam-aliases">books · greetings · screenshots · passwords · family photos</div>
+        <div class="fam-person-count"><b>${plural(common.files || 0, 'file')}</b>${common.vault_files ? ` · ${plural(common.vault_files, 'file')} in vault` : ''}</div>
+      </div>
+    </article>`);
+
+  const others = d.others;
+  cards.push(`
+    <article class="fam-person-card fam-unknown" data-path="${esc(others.name)}" role="button" tabindex="0">
+      <div class="fam-avatar">?</div>
+      <div class="fam-person-meta">
+        <div class="fam-person-name">${esc(others.name)} <span class="fam-rel">review</span></div>
+        <div class="fam-aliases">not safely attributable — kept, never guessed</div>
+        <div class="fam-person-count"><b>${plural(others.files || 0, 'file')}</b>${others.vault_files ? ` · ${plural(others.vault_files, 'file')} in vault` : ''}</div>
+      </div>
+    </article>`);
+
+  if (!d.profile.people.length) {
+    cards.unshift(`
+      <article class="fam-person-card fam-empty" role="button" tabindex="0" id="famEmptyCard">
+        <div class="fam-avatar">＋</div>
+        <div class="fam-person-meta">
+          <div class="fam-person-name">Define your family</div>
+          <div class="fam-aliases">Add names, aliases, relationships and employers once — every future scan uses them.</div>
+        </div>
+      </article>`);
+  }
+
+  host.innerHTML = cards.join('');
+  host.querySelectorAll('.fam-person-card[data-path]').forEach((el) => {
+    el.addEventListener('click', () => {
+      familyState.source = familyState.source === 'plan' ? 'plan' : familyState.source;
+      exploreFamily(el.dataset.path, familyState.source);
+    });
+  });
+  const empty = $('famEmptyCard');
+  if (empty) empty.addEventListener('click', openFamilyEditor);
+}
+
+function renderFamilyTree() {
+  const d = familyState.data;
+  const host = $('familyTree');
+  if (!host || !d) return;
+  const tree = familyState.source === 'vault' ? d.vault_tree : d.plan_tree;
+  $('familyTreeHint').textContent =
+    familyState.source === 'vault' ? 'real vault folders' : 'planned folders (not yet moved)';
+
+  if (!tree || !tree.folders.length) {
+    host.innerHTML = `<div class="fam-empty-tree">No folders yet.<br><span>Scan a folder and build a plan, then refresh.</span></div>`;
+    return;
+  }
+  host.innerHTML = '';
+  for (const node of tree.folders) host.appendChild(familyTreeNode(node, 0));
+}
+
+function familyTreeNode(node, depth) {
+  const wrap = document.createElement('div');
+  wrap.className = 'fam-node';
+  const open = depth < 1;
+  const details = document.createElement('details');
+  if (open) details.open = true;
+  const summary = document.createElement('summary');
+  summary.innerHTML =
+    `<span class="fam-folder-name">${esc(node.name)}</span>` +
+    `<span class="fam-folder-count">${(node.count || 0).toLocaleString()}</span>`;
+  summary.addEventListener('click', (ev) => {
+    // clicking the label navigates; the arrow toggles
+    if (ev.target.closest('.fam-folder-name')) {
+      ev.preventDefault();
+      exploreFamily(node.path, familyState.source);
+    }
+  });
+  details.appendChild(summary);
+  const kids = document.createElement('div');
+  kids.className = 'fam-node-kids';
+  for (const child of (node.folders || []).slice(0, 40)) kids.appendChild(familyTreeNode(child, depth + 1));
+  details.appendChild(kids);
+  wrap.appendChild(details);
+  return wrap;
+}
+
+async function exploreFamily(path, source) {
+  familyState.path = path || '';
+  familyState.source = source || 'plan';
+  const q = `/api/explore?source=${encodeURIComponent(familyState.source)}&path=${encodeURIComponent(familyState.path)}`;
+  let r;
+  try { r = await api(q); } catch (e) { toast('Folder not found', 'bad'); return; }
+  if (r.error) { toast(r.error, 'bad'); return; }
+
+  const title = familyState.path ? familyState.path.split('/').pop() : 'All files';
+  $('famExpTitle').textContent = title;
+  $('famExpHint').textContent =
+    `${r.count || 0} files · ${fmtBytes(r.bytes || 0)} · ${familyState.source === 'vault' ? 'vault' : 'plan'}`;
+
+  const crumbs = $('familyCrumbs');
+  const parts = r.breadcrumb || [];
+  const crumbHtml = [`<button class="fam-crumb" data-path="">⌂ Root</button>`];
+  parts.forEach((p, i) => {
+    const sub = parts.slice(0, i + 1).join('/');
+    crumbHtml.push(`<span class="fam-crumb-sep">/</span><button class="fam-crumb" data-path="${esc(sub)}">${esc(p)}</button>`);
+  });
+  crumbs.innerHTML = crumbHtml.join('');
+  crumbs.querySelectorAll('.fam-crumb').forEach((b) => {
+    b.addEventListener('click', () => exploreFamily(b.dataset.path, familyState.source));
+  });
+
+  const listing = $('familyListing');
+  if (!r.folders.length && !r.files.length) {
+    listing.innerHTML = `<div class="fam-empty-tree">This folder is empty.</div>`;
+    return;
+  }
+
+  const rows = [];
+  for (const f of r.folders) {
+    rows.push(`
+      <div class="fam-row fam-row-folder" data-path="${esc(f.path)}" role="button" tabindex="0">
+        <span class="fam-row-ico">📁</span>
+        <span class="fam-row-name">${esc(f.name)}</span>
+        <span class="fam-row-meta">${plural(f.files || 0, 'file')}${f.children ? ` · ${plural(f.children, 'subfolder')}` : ''} · ${fmtBytes(f.bytes || 0)}</span>
+        <span class="fam-row-arrow">›</span>
+      </div>`);
+  }
+  for (const f of r.files) {
+    const status = f.status ? `<span class="fam-status ${f.status}">${esc(f.status)}</span>` : '';
+    rows.push(`
+      <div class="fam-row fam-row-file">
+        <span class="fam-row-ico">${getFileIcon(f.ext)}</span>
+        <span class="fam-row-name">${esc(f.name)}</span>
+        <span class="fam-row-meta">${fmtBytes(f.size || 0)}${f.confidence ? ` · ${Math.round(f.confidence * 100)}%` : ''}</span>
+        ${status}
+      </div>`);
+  }
+  listing.innerHTML = rows.join('');
+  listing.querySelectorAll('.fam-row-folder').forEach((el) => {
+    el.addEventListener('click', () => exploreFamily(el.dataset.path, familyState.source));
+  });
+}
+
+// ---------------------------------------------------------------- editor
+
+function openFamilyEditor() {
+  renderFamilyEditor(familyState.profile || { common_folder: 'Common', unknown_folder: 'Others', people: [], rules: [] });
+  const ed = $('familyEditor');
+  ed.hidden = false;
+  ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderFamilyEditor(profile) {
+  const body = $('familyEditorBody');
+  const people = profile.people || [];
+  const rules = profile.rules || [];
+  body.innerHTML = `
+    <div class="fam-editor-grid">
+      <label>Shared folder <input id="famCommonFolder" value="${esc(profile.common_folder || 'Common')}"></label>
+      <label>Unmatched folder <input id="famUnknownFolder" value="${esc(profile.unknown_folder || 'Others')}"></label>
+    </div>
+    <div class="fam-editor-head">
+      <h3>People</h3>
+      <span class="hint">Aliases separated by commas. Employers are a very strong clue.</span>
+    </div>
+    <div id="famPeopleRows"></div>
+    <div class="fam-editor-head">
+      <h3>Custom rules</h3>
+      <span class="hint">If a file matches all keywords, it goes to this person and folder.</span>
+    </div>
+    <div id="famRuleRows"></div>
+    <div class="fam-editor-head">
+      <h3>How detection works</h3>
+      <span class="hint">A person is only chosen when the evidence is clear. Conflicting evidence goes to ${esc(profile.unknown_folder || 'Others')}/Review.</span>
+    </div>
+  `;
+  for (const p of people) addPersonRow(p);
+  for (const r of rules) addRuleRow(r);
+}
+
+function addPersonRow(p = {}) {
+  const host = $('famPeopleRows');
+  if (!host) return;
+  const row = document.createElement('div');
+  row.className = 'fam-editor-row fam-person-row';
+  row.innerHTML = `
+    <input class="p-name" placeholder="Full name (folder name)" value="${esc(p.name || '')}">
+    <input class="p-rel" placeholder="Relationship (Father, Mother, self…)" value="${esc(p.relationship || '')}">
+    <input class="p-alias" placeholder="Aliases / nicknames (Kush, Papa)" value="${esc((p.aliases || []).join(', '))}">
+    <input class="p-comp" placeholder="Employers / companies (R1, Rubix)" value="${esc((p.companies || []).join(', '))}">
+    <input class="p-key" placeholder="Extra keywords (properties, projects)" value="${esc((p.keywords || []).join(', '))}">
+    <button class="btn ghost icon small fam-remove" title="Remove person">✕</button>`;
+  row.querySelector('.fam-remove').addEventListener('click', () => row.remove());
+  host.appendChild(row);
+}
+
+function addRuleRow(r = {}) {
+  const host = $('famRuleRows');
+  if (!host) return;
+  const row = document.createElement('div');
+  row.className = 'fam-editor-row fam-rule-row';
+  row.innerHTML = `
+    <input class="r-match" placeholder="Match words (mahagun, ugly construction)" value="${esc((r.match || []).join(', '))}">
+    <input class="r-person" placeholder="Person name (must exist above)" value="${esc(r.person || '')}">
+    <input class="r-path" placeholder="Folder path (Documents/Job/Mahagun)" value="${esc((r.path || []).join('/'))}">
+    <button class="btn ghost icon small fam-remove" title="Remove rule">✕</button>`;
+  row.querySelector('.fam-remove').addEventListener('click', () => row.remove());
+  host.appendChild(row);
+}
+
+function splitList(value) {
+  return String(value || '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+async function saveFamilyProfile() {
+  const people = [];
+  document.querySelectorAll('.fam-person-row').forEach((row) => {
+    const name = row.querySelector('.p-name').value.trim();
+    if (!name) return;
+    people.push({
+      name,
+      relationship: row.querySelector('.p-rel').value.trim(),
+      aliases: splitList(row.querySelector('.p-alias').value),
+      companies: splitList(row.querySelector('.p-comp').value),
+      keywords: splitList(row.querySelector('.p-key').value),
+    });
+  });
+  const rules = [];
+  document.querySelectorAll('.fam-rule-row').forEach((row) => {
+    const match = splitList(row.querySelector('.r-match').value);
+    if (!match.length) return;
+    rules.push({
+      match,
+      person: row.querySelector('.r-person').value.trim(),
+      path: row.querySelector('.r-path').value.split('/').map((s) => s.trim()).filter(Boolean),
+      confidence: 0.98,
+    });
+  });
+  const payload = {
+    enabled: true,
+    common_folder: $('famCommonFolder').value.trim() || 'Common',
+    unknown_folder: $('famUnknownFolder').value.trim() || 'Others',
+    people,
+    rules,
+  };
+  try {
+    await post('/api/family/profile', payload);
+    $('familySaveHint').textContent = 'Saved · run a new Plan to apply';
+    toast('Family saved', 'ok');
+    await loadFamilyPage();
+    renderFamilyEditor(familyState.profile);
+  } catch (e) {
+    toast('Could not save family', 'bad');
+  }
+}
+
+function initFamilyUI() {
+  const edit = $('btnFamilyEdit');
+  if (edit) edit.addEventListener('click', openFamilyEditor);
+  const close = $('btnFamilyClose');
+  if (close) close.addEventListener('click', () => { $('familyEditor').hidden = true; });
+  const addP = $('btnAddPerson');
+  if (addP) addP.addEventListener('click', () => addPersonRow());
+  const addR = $('btnAddRule');
+  if (addR) addR.addEventListener('click', () => addRuleRow());
+  const save = $('btnFamilySave');
+  if (save) save.addEventListener('click', saveFamilyProfile);
+
+  const pristine = $('btnFamilyPlan');
+  if (pristine) pristine.addEventListener('click', () => {
+    familyState.source = 'plan';
+    familyState.path = '';
+    renderFamilyTree();
+    exploreFamily('', 'plan');
+  });
+  const vaultBtn = $('btnFamilyVault');
+  if (vaultBtn) vaultBtn.addEventListener('click', () => {
+    familyState.source = 'vault';
+    familyState.path = '';
+    renderFamilyTree();
+    exploreFamily('', 'vault');
+  });
+}
+
+
+// ==========================================================================
 // 6. SETTINGS VIEW
 // ==========================================================================
 
@@ -1389,7 +1749,18 @@ async function loadSettingsPage() {
       <span class="setting-label">AI Classification</span>
       <span class="setting-val">${c.llm_enabled ? 'Enabled (' + esc(c.llm_model) + ')' : 'Offline Rules Engine'}</span>
     </div>
+    <div class="setting-item">
+      <span class="setting-label">Family Registry</span>
+      <span class="setting-val">${(c.family_people || []).length} people · ${c.family_layout ? 'person-first layout ON' : 'person-first layout OFF'}
+        <button class="btn ghost small" id="btnSettingsFamily">✎ Edit Family</button>
+      </span>
+    </div>
   `;
+  const famBtn = $('btnSettingsFamily');
+  if (famBtn) famBtn.addEventListener('click', () => {
+    switchTab('family');
+    setTimeout(() => loadFamilyPage().then(() => openFamilyEditor()), 200);
+  });
 }
 
 // ==========================================================================
@@ -1626,13 +1997,16 @@ $('q').addEventListener('input', (e) => {
   clearTimeout(qTimer);
   qTimer = setTimeout(() => { state.q = e.target.value.trim(); state.page = 1; loadFiles(); }, 260);
 });
+if ($('fPerson')) {
+  $('fPerson').addEventListener('change', (e) => { state.person = e.target.value; state.page = 1; loadFiles(); });
+}
 $('fStatus').addEventListener('change', (e) => { state.status = e.target.value; state.page = 1; loadFiles(); });
 $('fSort').addEventListener('change', (e) => { state.sort = e.target.value; state.page = 1; loadFiles(); });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { state.selected.clear(); syncSelection(); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a'
-      && document.activeElement.tagName !== 'INPUT') {
+    && document.activeElement.tagName !== 'INPUT') {
     e.preventDefault();
     state.files.forEach((f) => state.selected.add(f.id));
     syncSelection();
@@ -1647,5 +2021,6 @@ initScopeSelector();
 loadOverview();
 loadFiles();
 initLiveChamber();
+initFamilyUI();
 pollJob();
 setInterval(loadOverview, 25000);

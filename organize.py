@@ -18,7 +18,7 @@ from pathlib import Path
 from organizer.apply import apply_plan, undo_last
 from organizer.audit import run_audit
 from organizer.config import (
-    APP_DIR, Config, category_names, load_taxonomy, save_taxonomy,
+    APP_DIR, Config, load_taxonomy,
 )
 from organizer.planner import PlanItem, build_plan, to_json
 from organizer.report import human, write_report
@@ -163,6 +163,12 @@ def cmd_plan(cfg: Config, args) -> int:
 
     print(f"\n  {bold(str(stats['total']))} files -> {len({i.category for i in items})} categories")
     print(f"  by AI: {stats['llm_labeled']}   by rules: {stats['rules_labeled']}")
+    people_detected = {i.person for i in items if getattr(i, "person", "")}
+    if people_detected:
+        print(f"  {bold('People / Family detected:')} {ok(', '.join(sorted(people_detected)))}")
+    junk_count = sum(1 for i in items if i.category == "WhatsApp Junk")
+    if junk_count:
+        print(f"  {ok(str(junk_count) + ' WhatsApp junk/greetings isolated')} into WhatsApp_Junk/")
     if stats["low_confidence"]:
         print(f"  {warn(str(stats['low_confidence']) + ' need review')} (sent to Unsorted/Needs Review)")
     if stats["protected"]:
@@ -371,6 +377,12 @@ def cmd_watch(cfg: Config, args) -> int:
 def cmd_dashboard(cfg: Config, args) -> int:
     """Serve the live dashboard on localhost."""
     sys.path.insert(0, str(APP_DIR))
+    # The dashboard is a separate Flask process/import; pass the active config
+    # through so `organize.py --config custom.toml dashboard` uses it too.
+    config_path = getattr(cfg, "config_path", None)
+    if config_path:
+        import os
+        os.environ["WARDROBE_CONFIG"] = str(config_path)
     from dashboard.app import serve
 
     open_browser = not getattr(args, "no_open", False)

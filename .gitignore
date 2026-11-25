@@ -1,5 +1,8 @@
 # Python bytecode & cache
 __pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
 *.py[cod]
 *$py.class
 *.so
@@ -13,6 +16,8 @@ env/
 # Wardrobe runtime state & personal scan data (Never commit)
 state/
 reports/
+family.json
+config.toml
 *.log
 
 # PyInstaller build artifacts (Releases are published to GitHub Releases)
@@ -20,7 +25,7 @@ build/
 dist/
 *.spec
 build_exe.py
-tests/
+assets/*.onnx
 
 # Editor & OS files
 .vscode/
@@ -32,3 +37,10 @@ desktop.ini
 # Environment variables & API keys
 .env
 .env.local
+
+# demo output
+demo_run/
+demo_live/
+
+# test artifacts
+tests/_textract_tmp/

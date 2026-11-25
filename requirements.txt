@@ -8,6 +8,9 @@
 # Real PDF text. Without it, PDFs are classified by name only.
 pypdf>=4.0
 
+# Python 3.10 only: TOML parser fallback.
+tomli>=2.0; python_version < "3.11"
+
 # Render PDF pages to images so tesseract can read scanned PDFs.
 pymupdf>=1.24
 

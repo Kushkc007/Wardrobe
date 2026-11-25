@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wardrobe-organizer"
+version = "1.0.0"
+description = "Privacy-first, person-aware semantic file organizer with a live localhost dashboard."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Kushagra Chaturvedi" }]
+keywords = ["file-organizer", "file-management", "dashboard", "privacy", "offline", "family"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Win32 (MS Windows)",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Desktop Environment :: File Managers",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+full = [
+  "flask>=3.0",
+  "pypdf>=4.0",
+  "pymupdf>=1.24",
+  "pillow>=10.0",
+  "tomli>=2.0; python_version < '3.11'",
+]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+wardrobe = "organize:main"
+
+[tool.setuptools]
+py-modules = ["organize"]
+
+[tool.setuptools.packages.find]
+include = ["organizer*", "dashboard*"]
+
+[tool.setuptools.package-data]
+dashboard = ["templates/*.html", "static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
