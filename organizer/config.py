@@ -189,6 +189,16 @@ class Config:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         return self.state_dir / name
 
+    def is_protected(self, path: Path | str) -> bool:
+        p = Path(path).resolve()
+        for prot in self.protected_paths:
+            if p == prot or prot in p.parents:
+                return True
+        for part in p.parts:
+            if part.lower() in self.ignore_dirs:
+                return True
+        return False
+
 
 def _expand(value: str, base: Path) -> Path:
     text = str(value)

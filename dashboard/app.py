@@ -825,7 +825,8 @@ PREVIEWABLE = THUMBABLE | {
 
 
 def _thumb_path(c: Config, key: str) -> Path:
-    return c.state_dir / "thumbs" / f"{key}.jpg"
+    safe_key = re.sub(r"[^a-zA-Z0-9_\-]", "", str(key))
+    return c.state_dir / "thumbs" / f"{safe_key}.jpg"
 
 
 def _make_thumb(src: Path, out: Path, size: int = THUMB_SIZE) -> bool:
@@ -894,10 +895,15 @@ def thumb_path():
     path_param = request.args.get("path", "").strip()
     if not path_param:
         abort(404)
-    target = Path(path_param)
+    target = Path(path_param).resolve()
     if not target.exists() or target.is_dir():
         abort(404)
     c = cfg()
+    # Security: restrict thumbnail generation to allowed roots, vault, app_dir, or indexed files
+    allowed = list(c.roots) + [c.vault, c.app_dir]
+    if not any(target == r or r in target.parents for r in allowed):
+        if not any(f.path.resolve() == target for f in _inventory_files(c)):
+            abort(403)
     key = file_id(target)
     cached = _thumb_path(c, key)
     if not cached.exists():
@@ -1115,6 +1121,9 @@ def api_undo_file():
 
     try:
         src_p.parent.mkdir(parents=True, exist_ok=True)
+        if src_p.exists():
+            from organizer.planner import _dedupe
+            src_p = _dedupe(src_p, 1)
         shutil.move(str(dst_p), str(src_p))
         _cache.clear()
         return jsonify({"success": True, "restored_to": str(src_p)})
@@ -1131,10 +1140,14 @@ def api_move_file_custom():
     if not file_path or not dest_folder:
         return jsonify({"error": "File path and destination folder required"}), 400
 
-    src_p = Path(file_path)
-    dst_dir = Path(dest_folder)
+    src_p = Path(file_path).resolve()
+    dst_dir = Path(dest_folder).resolve()
     if not src_p.exists():
         return jsonify({"error": f"File does not exist: {file_path}"}), 404
+
+    c = cfg()
+    if c.is_protected(src_p):
+        return jsonify({"error": f"Cannot move protected/system path: {file_path}"}), 403
 
     try:
         dst_dir.mkdir(parents=True, exist_ok=True)
