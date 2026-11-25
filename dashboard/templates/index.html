@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wardrobe · Neural File Organizer</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+<div class="aurora" aria-hidden="true">
+  <span></span><span></span><span></span>
+</div>
+
+<!-- ============================ TOP HEADER ============================ -->
+<header class="top">
+  <div class="brand">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/>
+        <path d="M3 7.5 12 12l9-4.5"/>
+        <path d="M12 12v9"/>
+      </svg>
+    </div>
+    <div>
+      <div class="title-row">
+        <h1>Wardrobe</h1>
+        <span class="version-tag">PRO · CLAUDE STYLE</span>
+      </div>
+      <p class="sub">Intelligent autonomous file librarian & recursive scanner</p>
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="nav-tabs" id="navTabs">
+    <button class="tab-btn active" data-tab="live">
+      <span class="tab-ico">⚡</span> Live Chamber
+      <span class="pulse-dot"></span>
+    </button>
+    <button class="tab-btn" data-tab="explorer">
+      <span class="tab-ico">📁</span> Explorer
+    </button>
+    <button class="tab-btn" data-tab="duplicates">
+      <span class="tab-ico">⧉</span> Duplicates
+      <span class="tab-count" id="navDupCount">0</span>
+    </button>
+    <button class="tab-btn" data-tab="changelog">
+      <span class="tab-ico">📜</span> Changelog
+    </button>
+    <button class="tab-btn" data-tab="stats">
+      <span class="tab-ico">📊</span> Stats
+    </button>
+    <button class="tab-btn" data-tab="settings">
+      <span class="tab-ico">⚙️</span> Settings
+    </button>
+  </nav>
+
+  <!-- ACTION BUTTONS -->
+  <div class="actions">
+    <button class="btn ghost small" id="btnClearCache" title="Clear all cached state, inventory and start clean"><span class="ico">🧹</span> Clear Cache</button>
+    <button class="btn ghost small" data-act="undo" title="Rollback last move"><span class="ico">↺</span> Undo</button>
+    <button class="btn ghost icon" id="themeBtn" title="Toggle theme"><span class="ico">◐</span></button>
+  </div>
+</header>
+
+<!-- ============================ JOB PROGRESS BAR ============================ -->
+<div class="jobbar" id="jobbar" hidden>
+  <div class="job-meta-left">
+    <span class="job-pulse"></span>
+    <span class="job-action-badge" id="jobActionBadge">SCANNING</span>
+    <span id="jobmsg">processing…</span>
+  </div>
+  <div class="job-track-wrap">
+    <div class="jobfill" id="jobfill"></div>
+  </div>
+  <div class="job-meta-right">
+    <span class="jobpct" id="jobpct">0%</span>
+    <button class="btn small bad" id="btnCancelJob" title="Stop current background job and reset to idle">✕ Stop Job</button>
+  </div>
+</div>
+
+<!-- ============================ UNIFIED SCAN & ARRANGE COMMAND BAR ============================ -->
+<div class="command-bar" id="commandBar">
+  <div class="cmd-scope-group">
+    <span class="cmd-label">SCAN TARGET:</span>
+    <div class="cmd-scope-tabs" id="scopeTabs">
+      <button class="scope-tab active" data-mode="custom">🎯 Custom Folder</button>
+      <button class="scope-tab" data-mode="multi">📁 Configured Roots</button>
+      <button class="scope-tab" data-mode="full">💻 Full PC</button>
+    </div>
+  </div>
+
+  <div class="cmd-input-group" id="cmdInputGroup">
+    <div class="cmd-input-wrap" id="scopeInputWrap">
+      <span class="input-ico">📂</span>
+      <input type="text" id="scopePathInput" placeholder="Enter or paste folder path (e.g. C:\Users\kushk\Downloads or D:\Data)" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="cmd-roots-chips" id="activeRootsChips" hidden>
+      <!-- Clean chips: Downloads • Desktop • Documents -->
+    </div>
+  </div>
+
+  <div class="cmd-action-group">
+    <button class="btn go pulse-glow" id="btnMasterScan"><span class="ico">⚡</span> Scan & Live Sort</button>
+    <button class="btn ghost small" id="btnQuickPlan" title="Build plan from current scanned inventory"><span class="ico">◈</span> Plan</button>
+  </div>
+</div>
+
+<!-- ============================ PERSISTENT 2-LINE KPI BAR ============================ -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-pill">
+    <span class="stat-label">TOTAL SCANNED FILES</span>
+    <b class="stat-val" id="statFiles">–</b>
+  </div>
+  <div class="stat-pill">
+    <span class="stat-label">STORAGE VOLUME</span>
+    <b class="stat-val" id="statBytes">–</b>
+  </div>
+  <div class="stat-pill">
+    <span class="stat-label">READY TO MOVE</span>
+    <b class="stat-val ok" id="statReady">–</b>
+  </div>
+  <div class="stat-pill">
+    <span class="stat-label">NEEDS REVIEW</span>
+    <b class="stat-val warn" id="statReview">–</b>
+  </div>
+  <div class="stat-pill">
+    <span class="stat-label">DUPLICATES DETECTED</span>
+    <b class="stat-val bad" id="statDup">–</b>
+  </div>
+  <div class="stat-pill">
+    <span class="stat-label">VAULT FILED</span>
+    <b class="stat-val accent" id="statVault">–</b>
+  </div>
+</div>
+
+<!-- ============================ MAIN VIEW PAGES ============================ -->
+<main class="content-container">
+
+  <!-- ==================== 1. LIVE SORTING CHAMBER ==================== -->
+  <section class="page-view active" id="page-live">
+
+    <!-- Live Recursive Folder Breadcrumbs -->
+    <div class="live-breadcrumb-card card">
+      <div class="radar-box">
+        <span class="radar-ping"></span>
+        <span class="radar-center"></span>
+      </div>
+      <div class="breadcrumb-info">
+        <span class="breadcrumb-label">RECURSIVE SCANNER · LIVE PATH</span>
+        <div class="live-path" id="livePath">
+          <span class="p-sub">Ready to scan · Select target directory above</span>
+        </div>
+      </div>
+      <div class="live-scanner-stats">
+        <div class="sc-metric">
+          <span>Depth</span>
+          <b id="liveDepth">Level 1</b>
+        </div>
+        <div class="sc-metric">
+          <span>Speed</span>
+          <b id="liveSpeed">Normal</b>
+        </div>
+        <div class="sc-metric">
+          <span>Sorted</span>
+          <b id="liveSortedCount">0</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Arena -->
+    <div class="live-arena">
+      <!-- Left Stage: Incoming Hopper -->
+      <aside class="live-hopper card">
+        <div class="phead">
+          <div>
+            <h2>Incoming Stream</h2>
+            <span class="hint" id="hopperHint">Queue ready</span>
+          </div>
+          <div class="sim-speed-controls">
+            <button class="spd-btn active" data-speed="1">1x</button>
+            <button class="spd-btn" data-speed="2">2x</button>
+            <button class="spd-btn" data-speed="5">5x</button>
+            <button class="spd-btn" data-speed="20">⚡ Max</button>
+          </div>
+        </div>
+
+        <!-- Center Spotlight Item -->
+        <div class="spotlight-box" id="spotlightBox">
+          <div class="spot-card" id="spotCard">
+            <div class="spot-thumb" id="spotThumb">
+              <span class="spot-icon">📄</span>
+            </div>
+            <div class="spot-meta">
+              <div class="spot-title" id="spotTitle">Waiting for files...</div>
+              <div class="spot-tags">
+                <span class="tag-cat" id="spotCat">Ready</span>
+                <span class="tag-conf" id="spotConf">100%</span>
+              </div>
+              <div class="spot-path" id="spotPath">Click "Start Live Sort" or "Scan & Arrange"</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-controls-bar">
+          <button class="btn primary small" id="btnRunLive"><span class="ico">▶</span> Play Animation</button>
+          <button class="btn ghost small" id="btnPauseLive" disabled><span class="ico">⏸</span> Pause</button>
+          <button class="btn ghost small" id="btnResetLive"><span class="ico">↺</span> Replay</button>
+        </div>
+
+        <!-- Live Activity Feed Ticker -->
+        <div class="phead tight border-top">
+          <h2><span class="ico">⚡</span> Live Categorization Stream</h2>
+          <span class="hint" id="tickerCount">0 events</span>
+        </div>
+        <div class="live-ticker" id="liveTicker">
+          <div class="ticker-card system">
+            <div class="tc-left">
+              <span class="tc-icon">⚡</span>
+              <div class="tc-info">
+                <span class="tc-name">System Ready</span>
+                <div class="tc-dest">Live stream idle · Select folder to sort</div>
+              </div>
+            </div>
+            <div class="tc-status"><span class="tc-dot"></span> Ready</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Stage: Dynamic Folders Grid -->
+      <section class="live-folders-stage card">
+        <div class="phead">
+          <div>
+            <h2>Destination Vault & Created Folders</h2>
+            <span class="hint" id="liveFoldersHint">Folders form dynamically as files land</span>
+          </div>
+          <div class="stage-legend">
+            <span class="legend-item"><span class="dot-swatch ok"></span> Normal Folders</span>
+            <span class="legend-item"><span class="dot-swatch bad"></span> Duplicates Vault</span>
+          </div>
+        </div>
+
+        <!-- Special Duplicates Vault Card -->
+        <div class="special-dest-row">
+          <div class="folder-card duplicate-vault" id="folderCardDups">
+            <div class="f-icon">⧉</div>
+            <div class="f-info">
+              <div class="f-name">Duplicates & Review Holding</div>
+              <div class="f-sub">Isolated identical copies & redundant files</div>
+            </div>
+            <div class="f-badge bad" id="dupBadgeCount">0 files</div>
+          </div>
+        </div>
+
+        <!-- Generated Category Folder Cards -->
+        <div class="folders-grid" id="foldersGrid">
+          <!-- Dynamically populated folder cards -->
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ==================== 2. FILE EXPLORER VIEW ==================== -->
+  <section class="page-view" id="page-explorer">
+    <div class="explorer-shell">
+      <!-- Folder Tree Sidebar -->
+      <aside class="side card">
+        <div class="phead tight">
+          <h2>Categories</h2>
+          <span class="hint" id="vaultPathDisplay">–</span>
+        </div>
+        <div class="sidetools">
+          <input id="q" type="search" placeholder="Search files…" autocomplete="off">
+        </div>
+        <nav class="tree" id="tree"></nav>
+        <div class="sidefoot">
+          <select id="fStatus">
+            <option value="">Any status</option>
+            <option value="ready">Ready</option>
+            <option value="low_confidence">Needs review</option>
+            <option value="protected">Kept in place</option>
+            <option value="conflict">Name conflict</option>
+          </select>
+          <select id="fSort">
+            <option value="name">Name</option>
+            <option value="size">Largest first</option>
+            <option value="confidence">Least sure</option>
+            <option value="date">Newest first</option>
+          </select>
+        </div>
+      </aside>
+
+      <!-- Center File Grid -->
+      <section class="stage card">
+        <div class="phead">
+          <div>
+            <h2 id="stageTitle">All files</h2>
+            <span class="hint" id="stageHint">–</span>
+          </div>
+          <div class="bulk">
+            <button class="btn small ghost" id="selAll">Select all</button>
+            <button class="btn small ghost" id="selNone">Clear</button>
+          </div>
+        </div>
+
+        <!-- Dedicated Validation & Move Staging Area -->
+        <div class="validation-banner" id="validationBanner">
+          <div class="val-info">
+            <span class="val-badge-icon">📋</span>
+            <div>
+              <div class="val-heading">Move Validation & Staging</div>
+              <div class="val-sub">Vault folders ready. Uncheck any file you want to exclude or keep untouched in place.</div>
+            </div>
+          </div>
+          <div class="val-actions">
+            <button class="btn small ghost" id="btnSelectAllReady"><span class="ico">☑</span> Select All</button>
+            <button class="btn small ghost" id="btnUnselectAll"><span class="ico">☐</span> Uncheck All</button>
+            <button class="btn ok pulse-glow" id="btnApplyAllowed"><span class="ico">🚀</span> Move Allowed Files (<span id="valCount">0</span>)</button>
+          </div>
+        </div>
+
+        <div class="gridwrap">
+          <div class="grid" id="grid"></div>
+          <div class="empty" id="empty" hidden>No files match this view.</div>
+        </div>
+
+        <div class="pager">
+          <button class="btn small" id="prev">← Prev</button>
+          <span id="pageInfo">–</span>
+          <button class="btn small" id="next">Next →</button>
+        </div>
+      </section>
+
+      <!-- Right Inspector -->
+      <aside class="insp card" id="insp">
+        <div class="phead tight">
+          <h2>Inspector</h2>
+          <span class="hint" id="inspCount">nothing selected</span>
+        </div>
+        <div class="inspbody" id="inspBody">
+          <div class="inspempty">
+            <p>Click a file to inspect its metadata, extracted contents, and target directory.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ==================== 3. DUPLICATES VIEW (WITH EXPLORER THUMBNAILS) ==================== -->
+  <section class="page-view" id="page-duplicates">
+    <div class="dup-shell">
+      <div class="dup-hero card">
+        <div class="dup-hero-text">
+          <h2>Duplicate File Detection & Vault</h2>
+          <p>Identical byte copies, redundant downloads & clones. Isolated cleanly into separate storage.</p>
+        </div>
+        <div class="dup-hero-metrics">
+          <div class="dm-box">
+            <span>DUPLICATE GROUPS</span>
+            <b id="dupGroupCount">0</b>
+          </div>
+          <div class="dm-box">
+            <span>RECOVERABLE WASTE</span>
+            <b class="bad" id="dupWastedSpace">0 B</b>
+          </div>
+          <button class="btn bad" id="btnIsolateAllDups"><span class="ico">📥</span> Move All Duplicates to "Duplicates & Review" Folder</button>
+        </div>
+      </div>
+
+      <!-- Duplicates Explorer Grid -->
+      <div class="dup-clusters" id="dupClustersList">
+        <!-- Rendered duplicate cards with thumbnails -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 4. CHANGELOG & CHANGES VIEW (WITH INDIVIDUAL UNDO & MOVE) ==================== -->
+  <section class="page-view" id="page-changelog">
+    <div class="card changelog-card">
+      <div class="phead">
+        <div>
+          <h2>Journal & File History</h2>
+          <span class="hint" id="changelogHint">Audit record of every move and classification</span>
+        </div>
+        <div class="changelog-filters">
+          <input type="search" id="clSearch" placeholder="Search changelog…" class="small-search">
+          <select id="clOpFilter">
+            <option value="">All Operations</option>
+            <option value="move">Moved</option>
+            <option value="copy">Copied</option>
+            <option value="planned">Planned</option>
+            <option value="manual">Manual</option>
+          </select>
+          <button class="btn small ghost" id="btnRefreshChangelog"><span class="ico">↺</span> Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="cl-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Operation</th>
+              <th>File Name</th>
+              <th>Original Source</th>
+              <th>Destination Vault</th>
+              <th>Size</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="changelogBody">
+            <!-- Dynamically populated table rows with Undo and Move buttons -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager" id="clPager">
+        <button class="btn small" id="clPrev">← Prev</button>
+        <span id="clPageInfo">–</span>
+        <button class="btn small" id="clNext">Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5. STATS & ANALYTICS VIEW ==================== -->
+  <section class="page-view" id="page-stats">
+    <div class="stats-dashboard">
+      <!-- 2-Line KPI Tiles Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card card">
+          <div class="kpi-ico">📁</div>
+          <div class="kpi-info">
+            <span class="kpi-label">TOTAL SCANNED FILES</span>
+            <b class="kpi-val" id="kpiFiles">0</b>
+          </div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-ico">💾</div>
+          <div class="kpi-info">
+            <span class="kpi-label">STORAGE VOLUME</span>
+            <b class="kpi-val" id="kpiBytes">0 B</b>
+          </div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-ico ok">✓</div>
+          <div class="kpi-info">
+            <span class="kpi-label">READY TO MOVE</span>
+            <b class="kpi-val ok" id="kpiReady">0</b>
+          </div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-ico warn">⚠</div>
+          <div class="kpi-info">
+            <span class="kpi-label">NEEDS REVIEW</span>
+            <b class="kpi-val warn" id="kpiReview">0</b>
+          </div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-ico bad">⧉</div>
+          <div class="kpi-info">
+            <span class="kpi-label">DUPLICATE COPIES</span>
+            <b class="kpi-val bad" id="kpiDups">0</b>
+          </div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-ico accent">♻</div>
+          <div class="kpi-info">
+            <span class="kpi-label">WASTE RECOVERABLE</span>
+            <b class="kpi-val accent" id="kpiWasted">0 B</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <!-- File Format Breakdown -->
+        <article class="card chart-card">
+          <div class="phead">
+            <h2>Format Breakdown</h2>
+            <span class="hint">Physical file type distribution</span>
+          </div>
+          <div class="format-bars" id="formatBars">
+            <!-- Dynamically rendered format meters -->
+          </div>
+        </article>
+
+        <!-- Category Volume Breakdown -->
+        <article class="card chart-card">
+          <div class="phead">
+            <h2>Storage per Category</h2>
+            <span class="hint">Vault distribution</span>
+          </div>
+          <div class="cat-bars" id="catBars">
+            <!-- Dynamically rendered category bars -->
+          </div>
+        </article>
+      </div>
+
+      <!-- Second Charts Row: Depths & Confidence -->
+      <div class="charts-row">
+        <article class="card chart-card">
+          <div class="phead">
+            <h2>Recursive Scan Depth</h2>
+            <span class="hint">Files nested across folder tiers</span>
+          </div>
+          <div class="depth-bars" id="depthBars">
+            <!-- Dynamically rendered depth distribution -->
+          </div>
+        </article>
+
+        <article class="card chart-card">
+          <div class="phead">
+            <h2>Classification Confidence</h2>
+            <span class="hint">Confidence threshold tiers</span>
+          </div>
+          <div class="confidence-summary" id="confSummary">
+            <!-- Rendered confidence meter -->
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 6. SETTINGS VIEW ==================== -->
+  <section class="page-view" id="page-settings">
+    <div class="card settings-card">
+      <div class="phead">
+        <h2>Configuration & Folders</h2>
+        <span class="hint">Active parameters from config.toml</span>
+      </div>
+      <div class="settings-body" id="settingsBody">
+        <!-- Rendered config parameters -->
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================ BOTTOM ACTION BAR ============================ -->
+<div class="actionbar" id="actionbar">
+  <div class="abinfo">
+    <b id="abCount">0 files selected to move</b>
+    <span id="abSize" class="hint"></span>
+  </div>
+  <div class="abbtns">
+    <button class="btn ok pulse-glow" id="btnFile"><span class="ico">🚀</span> Move Allowed Files (<span id="abBtnCount">0</span>)</button>
+    <div class="moveto">
+      <select id="moveCat"><option value="">Custom Move to…</option></select>
+      <select id="moveSub"><option value="">subcategory</option></select>
+      <button class="btn ghost small" id="btnMove">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ MOVE FILE CUSTOM MODAL ============================ -->
+<div class="modal-overlay" id="moveModal" hidden>
+  <div class="modal-card card">
+    <div class="phead">
+      <h2>Move File (Real Windows Explorer Move)</h2>
+      <button class="btn ghost icon small" id="btnCloseModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="m-file-info">
+        <span class="m-label">Selected File:</span>
+        <b id="modalFileName">–</b>
+        <div class="mono-path" id="modalFilePath">–</div>
+      </div>
+      <div class="m-input-group">
+        <label for="modalDestFolder">Destination Directory Path (Folder):</label>
+        <input type="text" id="modalDestFolder" placeholder="e.g. C:\Users\kushk\Organized\Personal\Govind" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnCancelMove">Cancel</button>
+        <button class="btn go" id="btnConfirmMove"><span class="ico">✓</span> Move File Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ FLOATING ANIMATION & TOASTS ============================ -->
+<div class="toasts" id="toasts"></div>
+<div class="flylayer" id="flylayer" aria-hidden="true"></div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

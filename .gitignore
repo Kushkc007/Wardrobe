@@ -1,0 +1,27 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Wardrobe runtime state & personal scan data (Never commit)
+state/
+reports/
+*.log
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables & API keys
+.env
+.env.local

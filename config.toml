@@ -1,0 +1,147 @@
+# ============================================================
+#  Wardrobe - configuration
+#  Edit this file, then run:  organize.cmd scan
+# ============================================================
+
+[general]
+# Where the "wardrobe" lives. Every sorted file ends up under this folder.
+vault = "~/Organized"
+
+# Folders the agent is allowed to read from and empty out.
+# Use "@name" for your real Windows shell folders - this matters because
+# Desktop/Documents/Pictures are often redirected into OneDrive and a
+# hardcoded "C:/Users/you/Desktop" would be the wrong (empty) folder.
+#
+#   @downloads  @desktop  @documents  @pictures  @videos  @music  @onedrive
+#
+# Absolute paths and forward slashes work too.
+roots = [
+  "@downloads",
+  "@desktop",
+  "@documents",
+  "@pictures",
+  "@videos",
+  "@music",
+]
+
+# Ignore anything modified more recently than this (protects files you are
+# still working on / active downloads).
+min_file_age_hours = 0
+
+# Skip files bigger than this. They get classified by name only.
+max_size_mb = 512
+
+# Below this confidence a file goes to "Unsorted/Needs Review"
+# instead of being guessed into a category.
+confidence_threshold = 0.55
+
+# Recurse into subfolders.
+recursive = true
+
+# How deep to go inside each root. 6 is plenty.
+max_depth = 8
+
+# A folder containing a marker file (.git, package.json, pyproject.toml,
+# Cargo.toml, ...) is a PROJECT. It is handled as one unit, not as 4,000
+# loose files - dismantling a repo would break it.
+treat_projects_as_units = true
+
+# Move project folders into the vault too? Off by default: moving a repo
+# breaks absolute paths, virtualenvs and IDE settings.
+move_projects = false
+
+# If multiple family members / users share this PC, list their names here!
+# Files matching their names (Resumes, Salary slips, Passports, Aadhaar, IDs, etc.)
+# will automatically be separated into their own subfolders instead of mixing!
+people = ["Alex", "Sam"]
+
+# Add or remove markers here if you have unusual project types.
+# project_markers = [".git", "package.json", "pyproject.toml", "go.mod"]
+
+# ============================================================
+#  Layout inside the vault
+# ============================================================
+[layout]
+# {category}  {subcategory}  {year}  {month}  {ext}  {filename}
+pattern = "{category}/{subcategory}/{filename}"
+
+# ============================================================
+#  Folders the agent must never look inside
+# ============================================================
+# Active workspaces, render pipelines, app resource folders. Anything under
+# these paths is invisible to the organiser - not read, not listed, not moved.
+# This is the escape hatch that keeps a good wardrobe from eating your tools.
+[protect]
+paths = [
+  # "~/Downloads/ActiveProjects",
+  # "~/Videos/RawFootage",
+]
+
+# ============================================================
+#  What the agent refuses to touch
+# ============================================================
+[ignore]
+dirs = [
+  "AppData", "Windows", "Program Files", "Program Files (x86)", "ProgramData",
+  "$Recycle.Bin", "System Volume Information", "node_modules", "__pycache__",
+  ".git", ".svn", ".hg", ".venv", "venv", "site-packages", ".cache", ".npm",
+  ".nuget", ".gradle", ".m2", ".next", ".turbo", ".idea", ".vscode",
+  "OneDrive", "Organized",
+]
+
+names = [
+  "desktop.ini", "thumbs.db", ".ds_store", "ntuser.dat", "bootmgr",
+]
+
+extensions = [
+  ".tmp", ".temp", ".crdownload", ".part", ".partial", ".lock",
+  ".dll", ".sys", ".drv", ".ocx", ".lnk", ".url", ".db-wal", ".db-shm",
+]
+
+# ============================================================
+#  Intelligence layer
+# ============================================================
+[llm]
+# "auto"  = use the LLM only if an API key is found in the environment
+# true    = always try the LLM
+# false   = rules engine only (works offline, no key needed)
+enabled = "auto"
+
+# Any OpenAI-compatible endpoint works:
+#   OpenAI      https://api.openai.com/v1
+#   OpenRouter  https://openrouter.ai/api/v1
+#   Groq        https://api.groq.com/openai/v1
+#   Ollama      http://localhost:11434/v1      (model: "qwen2.5:7b")
+#   LM Studio   http://localhost:1234/v1
+base_url = "https://api.openai.com/v1"
+model = "gpt-4o-mini"
+api_key_env = "OPENAI_API_KEY"
+
+# Files sent per request. Lower it if you hit rate limits.
+batch_size = 15
+timeout_seconds = 90
+temperature = 0
+
+# ============================================================
+#  Last-resort buckets when nothing matched.
+#  Only used at very low confidence - purely by file kind.
+# ============================================================
+[fallback]
+".jpg"  = ["Media Library", "Photos"]
+".jpeg" = ["Media Library", "Photos"]
+".png"  = ["Media Library", "Photos"]
+".heic" = ["Media Library", "Photos"]
+".webp" = ["Media Library", "Photos"]
+".gif"  = ["Media Library", "Photos"]
+".mp4"  = ["Media Library", "Personal Video"]
+".mov"  = ["Media Library", "Personal Video"]
+".mkv"  = ["Media Library", "Personal Video"]
+".mp3"  = ["Media Library", "Music"]
+".flac" = ["Media Library", "Music"]
+".wav"  = ["Media Library", "Music"]
+".exe"  = ["Installers & Software", "Installers"]
+".msi"  = ["Installers & Software", "Installers"]
+".apk"  = ["Installers & Software", "Installers"]
+".zip"  = ["Archive & Old", "Zips & Bundles"]
+".rar"  = ["Archive & Old", "Zips & Bundles"]
+".7z"   = ["Archive & Old", "Zips & Bundles"]

@@ -1,0 +1,24 @@
+# Wardrobe — optional dependencies.
+#
+# The organiser runs with ZERO of these installed: docx/xlsx/pptx/txt/code are
+# read with the Python standard library. Each line below unlocks something.
+#
+#   pip install -r requirements.txt
+
+# Real PDF text. Without it, PDFs are classified by name only.
+pypdf>=4.0
+
+# Render PDF pages to images so tesseract can read scanned PDFs.
+pymupdf>=1.24
+
+# Image dimensions / EXIF reading for photos (organizer/media.py uses a built-in
+# parser, but Pillow also enables OCR tests to generate test images).
+pillow>=10.0
+
+# The live dashboard. Without Flask, `organize.cmd dashboard` will not start;
+# every other command still works.
+flask>=3.0
+
+# NOT installed by pip: tesseract itself is a Windows program.
+#   winget install UB-Mannheim.TesseractOCR
+# The OCR module finds it automatically in "C:\Program Files\Tesseract-OCR".

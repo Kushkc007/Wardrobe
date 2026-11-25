@@ -1,0 +1,928 @@
+{
+  "version": 1,
+  "generated_by": "seed",
+  "categories": [
+    {
+      "name": "Money & Paperwork",
+      "description": "Anything about earning, spending, taxes, bills, insurance or official financial records.",
+      "subcategories": [
+        {
+          "name": "Taxes",
+          "keywords": [
+            "tax",
+            "taxes",
+            "itr",
+            "gst",
+            "form16",
+            "form 16",
+            "tds",
+            "income tax",
+            "26as",
+            "challan",
+            "assessment year",
+            "ay 20",
+            "return filing",
+            "advance tax",
+            "gstr",
+            "vat"
+          ],
+          "extensions": [
+            ".pdf",
+            ".xlsx",
+            ".csv",
+            ".json"
+          ]
+        },
+        {
+          "name": "Invoices & Receipts",
+          "keywords": [
+            "invoice",
+            "receipt",
+            "bill",
+            "quotation",
+            "quote",
+            "purchase order",
+            "proforma",
+            "payment proof",
+            "paid"
+          ],
+          "extensions": [
+            ".pdf",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".xlsx",
+            ".csv"
+          ]
+        },
+        {
+          "name": "Banking & Statements",
+          "keywords": [
+            "statement",
+            "bank",
+            "passbook",
+            "cheque",
+            "check",
+            "account number",
+            "ifsc",
+            "neft",
+            "imps",
+            "upi",
+            "transaction",
+            "credit card",
+            "debit card"
+          ],
+          "extensions": [
+            ".pdf",
+            ".xlsx",
+            ".csv"
+          ]
+        },
+        {
+          "name": "Insurance & Policies",
+          "keywords": [
+            "insurance",
+            "policy",
+            "premium",
+            "lic",
+            "mediclaim",
+            "claim",
+            "cover note",
+            "renewal notice",
+            "term plan"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Loans & Investments",
+          "keywords": [
+            "loan",
+            "emi",
+            "mutual fund",
+            "sip",
+            "portfolio",
+            "demat",
+            "shares",
+            "nps",
+            "ppf",
+            "fixed deposit",
+            "fd receipt",
+            "cibil",
+            "credit report",
+            "sanction letter"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Salary & Employment",
+          "keywords": [
+            "salary",
+            "payslip",
+            "pay slip",
+            "appointment letter",
+            "offer letter",
+            "relieving letter",
+            "experience letter",
+            "form 12bb",
+            "increment",
+            "appraisal",
+            "ctc",
+            "resume",
+            "cv",
+            "curriculum vitae",
+            "biodata",
+            "job application",
+            "cover letter"
+          ],
+          "extensions": [
+            ".pdf",
+            ".docx",
+            ".doc"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Work & Clients",
+      "description": "Client work, contracts, meetings, deliverables and anything tied to doing business with someone.",
+      "subcategories": [
+        {
+          "name": "Clients",
+          "keywords": [
+            "client",
+            "customer",
+            "onboarding",
+            "brand brief",
+            "retainer",
+            "account manager",
+            "kickoff"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Contracts & Legal",
+          "keywords": [
+            "contract",
+            "agreement",
+            "nda",
+            "mou",
+            "terms and conditions",
+            "sow",
+            "scope of work",
+            "msa",
+            "legal",
+            "affidavit",
+            "notarised",
+            "notarized"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Deliverables",
+          "keywords": [
+            "deliverable",
+            "final cut",
+            "approved",
+            "handover",
+            "signoff",
+            "sign off",
+            "submission",
+            "client copy"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Meetings & Notes",
+          "keywords": [
+            "meeting",
+            "minutes",
+            "mom",
+            "agenda",
+            "standup",
+            "sync notes",
+            "call notes",
+            "recap"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Pitches & Decks",
+          "keywords": [
+            "pitch",
+            "deck",
+            "proposal",
+            "presentation",
+            "slides",
+            "keynote",
+            "case study",
+            "portfolio deck"
+          ],
+          "extensions": [
+            ".pptx",
+            ".ppt",
+            ".key"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Code & Development",
+      "description": "Source code, repos, configs, datasets and technical documentation.",
+      "subcategories": [
+        {
+          "name": "Projects & Repos",
+          "keywords": [
+            "readme",
+            "package.json",
+            "requirements.txt",
+            "dockerfile",
+            "docker-compose",
+            "main.py",
+            "index.js",
+            "app.py",
+            "src",
+            "repo",
+            "repository",
+            "changelog",
+            "contributing"
+          ],
+          "extensions": [
+            ".py",
+            ".js",
+            ".ts",
+            ".tsx",
+            ".jsx",
+            ".java",
+            ".cs",
+            ".go",
+            ".rs",
+            ".rb",
+            ".php",
+            ".c",
+            ".cpp",
+            ".h",
+            ".kt",
+            ".swift",
+            ".dart",
+            ".vue",
+            ".svelte"
+          ]
+        },
+        {
+          "name": "Configs & Env",
+          "keywords": [
+            "config",
+            "settings",
+            "env",
+            "dotenv",
+            "dockerfile",
+            "nginx",
+            "makefile",
+            "gitignore",
+            "eslint",
+            "prettier",
+            "tsconfig"
+          ],
+          "extensions": [
+            ".toml",
+            ".ini",
+            ".cfg",
+            ".conf",
+            ".env",
+            ".yaml",
+            ".yml"
+          ]
+        },
+        {
+          "name": "Databases & Data",
+          "keywords": [
+            "dataset",
+            "schema",
+            "migration",
+            "seed data",
+            "dump",
+            "table",
+            "query",
+            "sqlite",
+            "postgres",
+            "mongodb"
+          ],
+          "extensions": [
+            ".sql",
+            ".sqlite",
+            ".db",
+            ".parquet"
+          ]
+        },
+        {
+          "name": "Docs & API",
+          "keywords": [
+            "api",
+            "swagger",
+            "openapi",
+            "sdk",
+            "endpoint",
+            "documentation",
+            "docs",
+            "postman",
+            "collection"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Scripts & Automation",
+          "keywords": [
+            "script",
+            "automation",
+            "cron",
+            "bot",
+            "scraper",
+            "scrape",
+            "scheduler",
+            "batch file",
+            "powershell"
+          ],
+          "extensions": [
+            ".ps1",
+            ".bat",
+            ".cmd",
+            ".sh",
+            ".zsh"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Creative Projects",
+      "description": "Video, design, audio and content production work - the actual making of things.",
+      "subcategories": [
+        {
+          "name": "YouTube & Shorts",
+          "keywords": [
+            "youtube",
+            "shorts",
+            "reel",
+            "reels",
+            "thumbnail",
+            "outro",
+            "b-roll",
+            "broll",
+            "footage",
+            "voiceover",
+            "voice over",
+            "hook",
+            "channel",
+            "subscriber",
+            "yt video",
+            "yt shorts",
+            "vlog",
+            "stream recording"
+          ],
+          "extensions": [
+            ".mp4",
+            ".mov",
+            ".mkv",
+            ".webm"
+          ]
+        },
+        {
+          "name": "Editing & Timelines",
+          "keywords": [
+            "premiere",
+            "after effects",
+            "davinci",
+            "resolve",
+            "project file",
+            "timeline",
+            "render",
+            "export",
+            "sequence",
+            "proxy"
+          ],
+          "extensions": [
+            ".prproj",
+            ".aep",
+            ".drp",
+            ".veg",
+            ".fcpxml",
+            ".aepx"
+          ]
+        },
+        {
+          "name": "Design & Brand",
+          "keywords": [
+            "logo",
+            "brand",
+            "poster",
+            "flyer",
+            "banner",
+            "mockup",
+            "palette",
+            "typography",
+            "figma",
+            "photoshop",
+            "illustrator",
+            "canva",
+            "social post"
+          ],
+          "extensions": [
+            ".psd",
+            ".ai",
+            ".xd",
+            ".fig",
+            ".sketch",
+            ".indd",
+            ".svg"
+          ]
+        },
+        {
+          "name": "Audio & Music Production",
+          "keywords": [
+            "beat",
+            "mix",
+            "master",
+            "instrumental",
+            "sample pack",
+            "soundtrack",
+            "sfx",
+            "podcast",
+            "episode audio",
+            "voiceover",
+            "voice over",
+            "daw project",
+            "stem"
+          ],
+          "extensions": [
+            ".aup3",
+            ".flp",
+            ".als",
+            ".logicx",
+            ".rpp"
+          ]
+        },
+        {
+          "name": "Content Ideas",
+          "keywords": [
+            "idea",
+            "ideas",
+            "brainstorm",
+            "caption",
+            "hashtag",
+            "content plan",
+            "content calendar",
+            "script draft",
+            "outline",
+            "storyboard"
+          ],
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "name": "Learning & Reference",
+      "description": "Things you read or study: courses, books, papers, tutorials and notes.",
+      "subcategories": [
+        {
+          "name": "Courses",
+          "keywords": [
+            "course",
+            "udemy",
+            "coursera",
+            "edx",
+            "lesson",
+            "module",
+            "assignment",
+            "certificate of completion",
+            "lecture",
+            "curriculum",
+            "syllabus",
+            "specialization",
+            "university",
+            "instructor",
+            "mooc",
+            "enrolled",
+            "learning path",
+            "coursework",
+            "tutorial",
+            "chapter",
+            "study material"
+          ],
+          "extensions": [
+            ".pdf",
+            ".docx",
+            ".doc",
+            ".mp4",
+            ".zip",
+            ".pptx"
+          ]
+        },
+        {
+          "name": "Books & Ebooks",
+          "keywords": [
+            "book",
+            "ebook",
+            "novel",
+            "chapter",
+            "author",
+            "isbn",
+            "preface",
+            "prologue",
+            "introduction to",
+            "intro to",
+            "handbook",
+            "textbook",
+            "volume",
+            "edition",
+            "guidebook",
+            "algorithms",
+            "programming"
+          ],
+          "extensions": [
+            ".pdf",
+            ".epub",
+            ".mobi",
+            ".azw3",
+            ".djvu",
+            ".doc",
+            ".docx"
+          ]
+        },
+        {
+          "name": "Papers & Research",
+          "keywords": [
+            "paper",
+            "research",
+            "arxiv",
+            "thesis",
+            "journal",
+            "study",
+            "abstract",
+            "doi",
+            "citation",
+            "literature review"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Guides & Cheatsheets",
+          "keywords": [
+            "cheatsheet",
+            "cheat sheet",
+            "manual",
+            "guide",
+            "tutorial",
+            "how to",
+            "handbook",
+            "quickstart",
+            "readme"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Notes & Clippings",
+          "keywords": [
+            "notes",
+            "note",
+            "clipping",
+            "bookmark",
+            "summary",
+            "obsidian",
+            "notion export",
+            "highlights"
+          ],
+          "extensions": [
+            ".md",
+            ".markdown",
+            ".txt"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Personal & Life",
+      "description": "You, your family, your home, your health and your travel. The non-work life admin.",
+      "subcategories": [
+        {
+          "name": "Identity & Certificates",
+          "keywords": [
+            "aadhaar",
+            "aadhar",
+            "pan card",
+            "passport",
+            "driving licence",
+            "driving license",
+            "voter id",
+            "birth certificate",
+            "marksheet",
+            "mark sheet",
+            "degree",
+            "diploma",
+            "resume",
+            "cv",
+            "biodata",
+            "10th",
+            "12th",
+            "certificate",
+            "transcript",
+            "id card"
+          ],
+          "extensions": [
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png"
+          ]
+        },
+        {
+          "name": "Health & Medical",
+          "keywords": [
+            "medical",
+            "prescription",
+            "lab report",
+            "blood test",
+            "x-ray",
+            "xray",
+            "scan report",
+            "doctor",
+            "hospital",
+            "diagnosis",
+            "medicine",
+            "vaccination",
+            "discharge"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Home & Bills",
+          "keywords": [
+            "electricity",
+            "water bill",
+            "gas bill",
+            "rent agreement",
+            "lease",
+            "maintenance",
+            "broadband",
+            "wifi bill",
+            "society",
+            "property tax",
+            "possession"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Travel",
+          "keywords": [
+            "ticket",
+            "boarding pass",
+            "visa",
+            "itinerary",
+            "hotel",
+            "booking",
+            "flight",
+            "train",
+            "pnr",
+            "passport copy",
+            "travel insurance",
+            "trip"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Family & Events",
+          "keywords": [
+            "birthday",
+            "wedding",
+            "anniversary",
+            "invitation",
+            "function",
+            "family",
+            "celebration",
+            "greeting",
+            "memories"
+          ],
+          "extensions": []
+        }
+      ]
+    },
+    {
+      "name": "Media Library",
+      "description": "Photos, personal video and music - the raw personal media collection.",
+      "subcategories": [
+        {
+          "name": "Photos",
+          "keywords": [
+            "photo",
+            "img",
+            "dsc",
+            "selfie",
+            "camera",
+            "portrait",
+            "family",
+            "trip"
+          ],
+          "extensions": [
+            ".jpg",
+            ".jpeg",
+            ".heic",
+            ".heif",
+            ".raw",
+            ".cr2",
+            ".nef",
+            ".dng",
+            ".arw",
+            ".png",
+            ".webp",
+            ".gif",
+            ".bmp"
+          ]
+        },
+        {
+          "name": "Screenshots",
+          "keywords": [
+            "screenshot",
+            "screen shot",
+            "snipping",
+            "snip",
+            "screen capture",
+            "capture"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Wallpapers & Art",
+          "keywords": [
+            "wallpaper",
+            "background",
+            "stock photo",
+            "artwork",
+            "illustration",
+            "concept art",
+            "oem default"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Personal Video",
+          "keywords": [
+            "video",
+            "vid_",
+            "clip",
+            "recording",
+            "screen record",
+            "webcam"
+          ],
+          "extensions": [
+            ".mp4",
+            ".mov",
+            ".mkv",
+            ".avi",
+            ".wmv",
+            ".m4v",
+            ".webm"
+          ]
+        },
+        {
+          "name": "Music",
+          "keywords": [
+            "song",
+            "album",
+            "playlist",
+            "track",
+            "artist"
+          ],
+          "extensions": [
+            ".mp3",
+            ".flac",
+            ".m4a",
+            ".aac",
+            ".ogg",
+            ".wma",
+            ".opus"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Installers & Software",
+      "description": "Things you install, drivers, licence keys and activation files.",
+      "subcategories": [
+        {
+          "name": "Installers",
+          "keywords": [
+            "setup",
+            "installer",
+            "install",
+            "portable",
+            "x64",
+            "win64",
+            "release"
+          ],
+          "extensions": [
+            ".exe",
+            ".msi",
+            ".msix",
+            ".appx",
+            ".apk",
+            ".dmg",
+            ".pkg",
+            ".deb",
+            ".rpm",
+            ".iso"
+          ]
+        },
+        {
+          "name": "Drivers & Firmware",
+          "keywords": [
+            "driver",
+            "firmware",
+            "bios",
+            "chipset",
+            "gpu driver",
+            "update package"
+          ],
+          "extensions": []
+        },
+        {
+          "name": "Licences & Keys",
+          "keywords": [
+            "license",
+            "licence",
+            "serial",
+            "activation",
+            "product key",
+            "crack",
+            "keygen",
+            "subscription"
+          ],
+          "extensions": [
+            ".lic",
+            ".key"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Archive & Old",
+      "description": "Backups, old versions, bundles and things kept only for the record.",
+      "subcategories": [
+        {
+          "name": "Old Versions",
+          "keywords": [
+            "old",
+            "backup",
+            "bak",
+            "copy",
+            "draft",
+            "v1",
+            "v2",
+            "final final",
+            "deprecated",
+            "obsolete",
+            "previous"
+          ],
+          "extensions": [
+            ".bak",
+            ".old",
+            ".orig"
+          ]
+        },
+        {
+          "name": "Zips & Bundles",
+          "keywords": [
+            "bundle",
+            "compressed",
+            "extract",
+            "zip file",
+            "rar archive",
+            "7z file",
+            "tarball",
+            "compressed folder",
+            "zip bundle"
+          ],
+          "extensions": [
+            ".zip",
+            ".rar",
+            ".7z",
+            ".tar",
+            ".gz",
+            ".bz2",
+            ".xz",
+            ".tgz",
+            ".iso"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unsorted",
+      "description": "Could not be confidently placed. Review these by hand and teach the taxonomy.",
+      "subcategories": [
+        {
+          "name": "Needs Review",
+          "keywords": [],
+          "extensions": []
+        }
+      ]
+    }
+  ]
+}
