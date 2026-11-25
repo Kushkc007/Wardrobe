@@ -33,7 +33,7 @@ jobs:
           set -o pipefail
           python -m pytest tests -q --tb=short 2>&1 | tee pytest.log || {
             code=$?
-            tail -n 60 pytest.log | sed -e 's/%/%25/g' -e 's/$//' | while IFS= read -r line; do
+            tail -n 60 pytest.log | tr -d '\r' | sed 's/%/%25/g' | while IFS= read -r line; do
               echo "::error title=pytest::${line}"
             done
             exit "$code"
