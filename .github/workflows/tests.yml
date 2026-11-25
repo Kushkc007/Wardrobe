@@ -31,7 +31,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest tests -q --tb=short 2>&1 | tee pytest.log
+          python -m pytest tests -q --tb=short 2>&1 | tee pytest.log || {
+            code=$?
+            tail -n 60 pytest.log | sed -e 's/%/%25/g' -e 's/$//' | while IFS= read -r line; do
+              echo "::error title=pytest::${line}"
+            done
+            exit "$code"
+          }
       - name: Publish failure summary
         if: failure()
         shell: bash
