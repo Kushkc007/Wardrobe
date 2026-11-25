@@ -42,7 +42,15 @@ from organizer.report import write_report  # noqa: E402
 from organizer.scanner import FileInfo, scan, file_id  # noqa: E402
 from organizer.rules import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, ARCHIVE_EXTENSIONS, INSTALLER_EXTENSIONS, CODE_EXTENSIONS  # noqa: E402
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+if getattr(sys, "frozen", False):
+    BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    template_dir = str(BUNDLE_DIR / "dashboard" / "templates")
+    static_dir = str(BUNDLE_DIR / "dashboard" / "static")
+else:
+    template_dir = str(Path(__file__).resolve().parent / "templates")
+    static_dir = str(Path(__file__).resolve().parent / "static")
+
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
 _cfg: Config | None = None
 _cache: dict = {}
@@ -1461,11 +1469,20 @@ def _undo_job(c: Config) -> None:
     _set(result={"restored": restored, "failed": failed, "errors": errors[:20]})
 
 
-def serve(host: str = "127.0.0.1", port: int = 8765) -> None:
+def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = False) -> None:
     print(f"\n  =======================================================")
     print(f"  ⚡ Wardrobe Live Dashboard  ->  http://{host}:{port}")
     print(f"  Exact Claude Photo Sorter Experience with Real-Time Sorting")
     print(f"  =======================================================\n")
+    if open_browser:
+        import webbrowser
+        def _open():
+            time.sleep(1.2)
+            try:
+                webbrowser.open(f"http://{host}:{port}")
+            except Exception:
+                pass
+        threading.Thread(target=_open, daemon=True).start()
     app.run(host=host, port=port, debug=False, threaded=True, use_reloader=False)
 
 

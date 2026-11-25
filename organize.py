@@ -373,13 +373,17 @@ def cmd_dashboard(cfg: Config, args) -> int:
     sys.path.insert(0, str(APP_DIR))
     from dashboard.app import serve
 
-    serve(host=args.host, port=args.port)
+    open_browser = not getattr(args, "no_open", False)
+    serve(host=args.host, port=args.port, open_browser=open_browser)
     return 0
 
 
 # ----------------------------------------------------------------- main
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is None and len(sys.argv) <= 1:
+        argv = ["dashboard"]
+
     parser = argparse.ArgumentParser(
         prog="organize", description="Wardrobe - a semantic file organiser"
     )
@@ -414,6 +418,7 @@ def main(argv: list[str] | None = None) -> int:
     p_dash = sub.add_parser("dashboard", help="open the live dashboard in a browser")
     p_dash.add_argument("--port", type=int, default=8765, help="port to serve on")
     p_dash.add_argument("--host", default="127.0.0.1", help="bind address (localhost only)")
+    p_dash.add_argument("--no-open", action="store_true", help="do not open browser automatically")
 
     args = parser.parse_args(argv)
     cfg = Config.load(args.config)

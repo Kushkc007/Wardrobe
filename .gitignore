@@ -15,6 +15,11 @@ state/
 reports/
 *.log
 
+# PyInstaller build artifacts (Releases are published to GitHub Releases)
+build/
+dist/
+*.spec
+
 # Editor & OS files
 .vscode/
 .idea/

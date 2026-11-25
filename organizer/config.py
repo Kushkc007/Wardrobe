@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parent.parent
+# Support running both directly from source and packaged as a frozen PyInstaller binary
+if getattr(sys, "frozen", False):
+    EXE_DIR = Path(sys.executable).resolve().parent
+    BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", EXE_DIR))
+    APP_DIR = EXE_DIR
+else:
+    APP_DIR = Path(__file__).resolve().parent.parent
+    BUNDLE_DIR = APP_DIR
+
 STATE_DIR = APP_DIR / "state"
 REPORT_DIR = APP_DIR / "reports"
 
@@ -93,10 +102,15 @@ class Config:
 
     @classmethod
     def load(cls, path: Path | str | None = None) -> "Config":
-        path = Path(path) if path else (APP_DIR / "config.toml")
+        if path:
+            cfg_path = Path(path)
+        else:
+            cfg_path = APP_DIR / "config.toml"
+            if not cfg_path.exists() and (BUNDLE_DIR / "config.toml").exists():
+                cfg_path = BUNDLE_DIR / "config.toml"
         raw: dict = {}
-        if path.exists():
-            with path.open("rb") as fh:
+        if cfg_path.exists():
+            with cfg_path.open("rb") as fh:
                 raw = tomllib.load(fh)
 
         general = raw.get("general", {})
@@ -105,7 +119,7 @@ class Config:
         llm_raw = raw.get("llm", {})
 
         cfg = cls()
-        cfg.app_dir = path.resolve().parent
+        cfg.app_dir = APP_DIR
 
         if general.get("vault"):
             cfg.vault = _expand(general["vault"], cfg.app_dir)
@@ -157,7 +171,12 @@ class Config:
         cfg.report_dir = cfg.app_dir / "reports"
 
         local_tax = cfg.app_dir / "taxonomy.json"
-        cfg.taxonomy_path = local_tax if local_tax.exists() else (APP_DIR / "taxonomy.json")
+        if local_tax.exists():
+            cfg.taxonomy_path = local_tax
+        elif (BUNDLE_DIR / "taxonomy.json").exists():
+            cfg.taxonomy_path = BUNDLE_DIR / "taxonomy.json"
+        else:
+            cfg.taxonomy_path = APP_DIR / "taxonomy.json"
         return cfg
 
     # ---------- helpers ----------
@@ -237,6 +256,8 @@ def resolve_known_folder(alias: str) -> Path | None:
 
 
 def load_taxonomy(path: Path) -> dict:
+    if not path.exists() and (BUNDLE_DIR / "taxonomy.json").exists():
+        path = BUNDLE_DIR / "taxonomy.json"
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
