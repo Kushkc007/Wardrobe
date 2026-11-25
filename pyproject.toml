@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wardrobe-organizer"
-version = "1.0.0"
+version = "1.1.0"
 description = "Privacy-first, person-aware semantic file organizer with a live localhost dashboard."
 readme = "README.md"
 license = { text = "MIT" }
