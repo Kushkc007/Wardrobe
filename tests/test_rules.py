@@ -19,7 +19,10 @@ from organizer.rules import RuleEngine  # noqa: E402
 from organizer.scanner import FileInfo  # noqa: E402
 
 TAXONOMY = json.loads((ROOT / "taxonomy.json").read_text(encoding="utf-8"))
-CONFIG = tomllib.loads((ROOT / "config.toml").read_text(encoding="utf-8"))
+_CONFIG_FILE = ROOT / "config.toml"
+if not _CONFIG_FILE.exists():
+    _CONFIG_FILE = ROOT / "config.example.toml"
+CONFIG = tomllib.loads(_CONFIG_FILE.read_text(encoding="utf-8"))
 FALLBACK = CONFIG.get("fallback", {})
 THRESHOLD = CONFIG["general"]["confidence_threshold"]
 ENGINE = RuleEngine(TAXONOMY, FALLBACK)
