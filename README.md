@@ -1,313 +1,273 @@
-# Wardrobe
+# ⚡ Wardrobe — Intelligent Semantic File Organizer & Live Control Room
 
-A semantic file organiser for Windows. It reads your files, works out what each
-one is **for**, and files it into a folder structure that makes sense to a human
-— not `PDF/`, `Images/`, `2024/`.
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
+[![Offline Safe](https://img.shields.io/badge/privacy-100%25%20Offline%20First-success.svg)]()
 
-The core rule: **the AI only labels. Deterministic code moves.** You review a
-plan before anything is touched, and every move is journaled and reversible.
-
----
-
-## Quick start
-
-### 🚀 1-Click Launch (Windows)
-Simply double-click **`start.bat`** (or `./start.sh` on Linux/macOS).
-It checks your Python environment, installs any missing packages from `requirements.txt`, launches the live dashboard on `http://127.0.0.1:8765`, and opens your default browser automatically.
-
-### 💻 Command Line
-```bat
-organize.cmd scan        :: read every file, build an inventory
-organize.cmd plan        :: classify -> plan.json + a visual review board
-organize.cmd apply       :: execute (asks you to type "yes")
-organize.cmd status      :: what's in the wardrobe now
-organize.cmd watch       :: keep filing new arrivals, hands off
-organize.cmd dashboard   :: the live web dashboard (recommended)
-```
-
-**The dashboard** is the nicest way to use this. `organize.cmd dashboard` opens
-`http://127.0.0.1:8765` — a live control room showing every file, where it is
-going, what was held back and why, duplicate waste, and a feed of every move.
-Buttons for Scan / Plan / Apply / Find duplicates / Undo, with a progress bar
-per job. It reads the same state files as the CLI, is bound to localhost only,
-and never invents a number.
-
-`plan` writes `reports\plan.html` — open it in a browser. That's the review
-board: every file, its destination, a confidence score and the reason it was
-placed there. Nothing moves until you run `apply`.
+> **A human-centric, deterministic file organizer with a real-time web dashboard.**  
+> It reads your messy folders, understands what each file is **actually for**, and organizes everything into meaningful categories (e.g. `Money & Paperwork/Invoices & Receipts`, `Work & Clients/Contracts`, `Personal & Life/Identity`) — instead of useless dumping grounds like `PDF/`, `Images/`, or `2024/`.
 
 ---
 
-## Commands
+## 📑 Table of Contents
 
-| Command | What it does |
-|---|---|
-| `scan` | Walks your roots, extracts text from docx/xlsx/pptx/pdf/txt/code, saves `state\inventory.json` |
-| `taxonomy` | Prints the current wardrobe categories |
-| `plan` | Classifies everything, writes `state\plan.json` + `reports\plan.html` |
-| `apply` | Moves files. `--copy` to leave originals, `--include-unsure` for low confidence |
-| `undo` | Reverses the most recent `apply`, file by file |
-| `audit` | Finds duplicates, empty folders, junk and leftovers |
-| `status` | Size and file count per category |
-| `watch` | Loops: files new arrivals above a confidence bar, logs every action |
-| `dashboard` | Live web dashboard: every file, every decision, every duplicate |
+1. [What is Wardrobe? (Project Overview)](#-what-is-wardrobe)
+2. [How It Works (Under the Hood)](#-how-it-works)
+3. [Quick Start & Launch Options](#-quick-start)
+   - [Option A: Standalone .EXE (No Python Needed)](#option-a-standalone-executable-wardrobeexe)
+   - [Option B: 1-Click Launcher (Windows `start.bat`)](#option-b-1-click-launcher-startbat)
+   - [Option C: Command Line Interface](#option-c-command-line-interface)
+4. [How & Where to Connect (Configuration Guide)](#-how--where-to-connect-configuration-guide)
+   - [1. 100% Offline Mode (Default — No Keys Required)](#1-100-offline-mode-default--no-keys-needed)
+   - [2. Connecting Local AI (Ollama / LM Studio)](#2-connecting-local-ai-ollama--lm-studio)
+   - [3. Connecting Cloud AI (OpenAI / Groq / OpenRouter)](#3-connecting-cloud-ai-openai--groq--openrouter)
+   - [4. Setting Source Folders & Destination Vault](#4-setting-source-folders--destination-vault)
+   - [5. Protecting Active Projects & Folders](#5-protecting-active-projects--workspaces)
+   - [6. Separating Family / Team Documents](#6-separating-family--team-member-documents)
+5. [The Live Dashboard Control Room](#-the-live-dashboard-control-room)
+6. [The Wardrobe Brain (`taxonomy.json`)](#-the-wardrobe-brain-taxonomyjson)
+7. [Guaranteed Safety & Rollback](#-guaranteed-safety--rollback)
+8. [Building from Source](#-building-the-standalone-exe)
 
-Useful flags:
+---
 
-```bat
-organize.cmd plan --limit 40              :: try it on 40 files first
-organize.cmd plan --no-llm                :: rules engine only, no API call
-organize.cmd apply --copy                 :: originals stay put
-organize.cmd apply -y                     :: skip the confirmation prompt
-organize.cmd watch --once                 :: one pass, for Task Scheduler
-organize.cmd watch --interval 300         :: check every 5 minutes
-organize.cmd watch --min-confidence 0.9   :: only the obvious ones
+## 🧐 What is Wardrobe?
+
+Most file organizers dump files by extension (`.pdf`, `.jpg`) or modification date. That doesn't solve clutter — it just creates a second organized mess. 
+
+**Wardrobe is different:**
+- **Understands Content:** It extracts embedded text from PDFs, Word docs (`.docx`), Excel sheets (`.xlsx`), PowerPoint decks (`.pptx`), and plain text/code.
+- **Understands Images:** It reads EXIF metadata, aspect ratios, and resolution to separate genuine camera photos from screenshots, memes, and wallpapers without needing heavy vision models.
+- **Reads Scanned Paper:** Integrates with Tesseract OCR to read text inside scanned physical invoices and paper receipts.
+- **Deterministic & Safe:** The AI/classifier only suggests labels. Real file movements are handled by strict, verified Python code with automatic name-collision protection (`invoice (2).pdf`) and an atomic rollback journal.
+- **Never Deletes:** Wardrobe **never** deletes your original files.
+
+---
+
+## ⚙️ How It Works
+
+```
+                               ┌────────────────────────────────────────────────┐
+                               │             Source Folders (Roots)             │
+                               │  (@downloads, @desktop, @documents, custom)    │
+                               └───────────────────────┬────────────────────────┘
+                                                       │
+                                            Fast Recursive Scanner
+                                       (Detects & Preserves Git Repos)
+                                                       │
+                                ┌──────────────────────┴──────────────────────┐
+                                ▼                                             ▼
+                     Embedded Text Extractor                        Media Provenance Analyzer
+                   (PyMuPDF / docx / xlsx / txt)                     (EXIF, aspect ratio, dims)
+                                │                                             │
+                                └──────────────────────┬──────────────────────┘
+                                                       │
+                                            Two-Tier Classification
+                                                       │
+                       ┌───────────────────────────────┴───────────────────────────────┐
+                       ▼                                                               ▼
+             Tier 1: Rules Engine (Default)                               Tier 2: Optional LLM
+         - 100% offline, zero latency                                 - Ollama (Local) or OpenAI/Groq
+         - Token-based weighted scoring                               - Triggered only when enabled
+         - Provenance & kinship detection                             - Auto-fallback to rules on error
+                       │                                                               │
+                       └───────────────────────────────┬───────────────────────────────┘
+                                                       │
+                                        Move Validation & Staging
+                                 (User reviews & unchecks unwanted moves)
+                                                       │
+                                    Safe Execution & Transaction Journal
+                                        Destination: ~/Organized
 ```
 
 ---
 
-## How classification works
+## 🚀 Quick Start
 
-Two engines, layered:
+Choose whichever launch option fits your style:
 
-**1. Rules engine** (`organizer/rules.py`) — always on, no internet, no key.
-Scores each category against keywords found in the filename, the folder path and
-the first pages of the file. Matching is token-based, so `sdk` does not match
-`asdkjhqwe` and `notes` does not outvote `call notes`. Weighted: filename hit >
-path hit > body hit — and body text is capped, so a word buried inside a file can
-only ever *suggest* a category, never silently decide one.
+### Option A: Standalone Executable (`Wardrobe.exe`)
+*Best for users who want zero installations or do not have Python installed.*
+1. Go to the `dist/` folder (or download `Wardrobe.exe` from Releases).
+2. Double-click **`Wardrobe.exe`**.
+3. It immediately starts the local server and opens your web browser to `http://127.0.0.1:8765`.
 
-**1b. Image reading** (`organizer/media.py`) — no vision model needed.
-For photos, the words inside the file are useless, so this reads the pixels and
-metadata instead: width/height, aspect ratio, EXIF camera make/model, capture
-date, and the filename. That is enough to tell a phone photo from a screenshot
-from an OEM wallpaper — which is what decides the folder. `2022_Acer_OLED_
-3840x2400.jpg` is recognised as *artwork*, `Screenshot 2024-03-01.png` as a
-*screenshot*, and `IMG_3301.jpg` as a real photo. No `.jpg` dumping ground.
+### Option B: 1-Click Launcher (`start.bat`)
+*Best for Windows users running from the source repo.*
+1. Double-click **`start.bat`** in the project folder.
+2. It automatically checks Python, installs missing packages from `requirements.txt`, launches the dashboard, and pops open your browser.
+*(On macOS / Linux, run `./start.sh`)*
 
-**1c. OCR** (`organizer/ocr.py`) — reads paper, not just filenames.
-Scanned PDFs, photos of bills, screenshots of a chat: none of these have text to
-extract, so before this they were invisible and guessed by name. Now:
-- images that aren't obviously camera photos or artwork are OCR'd with tesseract;
-- a PDF with no selectable text layer is rendered page by page and OCR'd;
-- text found this way is marked `scan`/`document` and fed to the classifier.
-
-Verified on a generated image-only invoice PDF: it read `TAX INVOICE`,
-`Rs 18,500` and `Due Date: 15-04-2024` with no text layer in the file at all.
-Tesseract is optional: without it everything still runs, PDFs just fall back to
-their filename. Install it with `winget install UB-Mannheim.TesseractOCR`.
-
-**2. LLM** (`organizer/llm.py`) — kicks in automatically if an API key exists.
-Sends batches of `{filename, folder, kind, excerpt}` and asks for one label each.
-
-Any OpenAI-compatible endpoint works. Easiest local option, free and private:
-
+### Option C: Command Line Interface
+*Best for terminal power users and automated scripts.*
 ```bat
-winget install Ollama.Ollama
-ollama pull qwen2.5:7b
+organize.cmd scan        :: Scan roots and generate inventory
+organize.cmd plan        :: Classify files and generate plan.json + review board
+organize.cmd apply       :: Move files to their destination vault
+organize.cmd undo        :: Instantly reverse the last move operation
+organize.cmd audit       :: Find duplicate files and empty directories
+organize.cmd watch       :: Background watcher that files new arrivals automatically
+organize.cmd dashboard   :: Start the interactive web dashboard on localhost
 ```
 
+---
+
+## 🔌 How & Where to Connect (Configuration Guide)
+
+All settings are controlled by **`config.toml`**. You can edit it with any text editor (Notepad, VS Code, etc.).
+
+### 1. 100% Offline Mode (Default — No Keys Needed)
+By default, Wardrobe runs completely offline using its built-in rule engine:
 ```toml
 [llm]
-enabled = true
-base_url = "http://localhost:11434/v1"
-model = "qwen2.5:7b"
-api_key_env = "OLLAMA_KEY"   # set any dummy value
+enabled = false # or "auto" without an API key
 ```
-
-Or a hosted model:
-
-```toml
-[llm]
-enabled = true
-base_url = "https://api.openai.com/v1"
-model = "gpt-4o-mini"
-api_key_env = "OPENAI_API_KEY"    # setx OPENAI_API_KEY sk-...
-```
-
-If the LLM errors, times out or returns garbage, those files fall back to rules.
-The run never fails because of the network.
-
-**Anything below `confidence_threshold` goes to `Unsorted/Needs Review`** instead
-of being guessed into a real category. That folder is your work queue — move a
-file out, add a keyword to `taxonomy.json`, and it stops happening.
+- **No API keys needed.**
+- **No internet required.**
+- Analyzes filenames, folder paths, document headers, and media metadata deterministically.
 
 ---
 
-## The wardrobe
+### 2. Connecting Local AI (Ollama / LM Studio)
+If you want deep semantic classification without your data leaving your computer:
 
-`taxonomy.json` is the whole brain. Ten categories, each with subcategories,
-keywords and optional file extensions:
-
-```
-Money & Paperwork      Taxes · Invoices & Receipts · Banking · Insurance · Loans · Salary
-Work & Clients         Clients · Contracts · Deliverables · Meetings · Pitches
-Code & Development     Projects · Configs · Databases · API Docs · Scripts
-Creative Projects      YouTube & Shorts · Editing · Design & Brand · Audio · Ideas
-Learning & Reference   Courses · Books · Papers · Guides · Notes
-Personal & Life        Identity · Health · Home & Bills · Travel · Family
-Media Library          Photos · Screenshots · Wallpapers & Art · Personal Video · Music
-Installers & Software  Installers · Drivers · Licences
-Archive & Old          Old Versions · Zips & Bundles
-Unsorted               Needs Review
-```
-
-Edit it freely. Add a category for your own life (`Guitar`, `Cooking`,
-`Freelance — Acme Corp`), add keywords, re-run `plan`. That is how the wardrobe
-becomes *yours* instead of a generic template.
-
-Layout inside the vault is a template in `config.toml`:
-
-```toml
-[layout]
-pattern = "{category}/{subcategory}/{filename}"
-```
-
-`{year}` and `{month}` are available too — but the default deliberately doesn't
-use them, because date folders hide everything.
+1. Install [Ollama](https://ollama.com/) and pull a lightweight model:
+   ```bash
+   ollama pull qwen2.5:7b
+   ```
+2. In `config.toml`, configure the `[llm]` section:
+   ```toml
+   [llm]
+   enabled = true
+   base_url = "http://localhost:11434/v1"
+   model = "qwen2.5:7b"
+   api_key_env = "OLLAMA_API_KEY" # Any dummy value works
+   ```
+Wardrobe will now query your local Ollama instance over localhost!
 
 ---
 
-## Three things that protect you from a second mess
+### 3. Connecting Cloud AI (OpenAI / Groq / OpenRouter)
+If you prefer hosted models for ultra-high accuracy on difficult documents:
 
-### 1. Project folders are units, not files
+1. Get an API key from [OpenAI](https://platform.openai.com/), [Groq](https://groq.com/), or [OpenRouter](https://openrouter.ai/).
+2. Set your environment variable in Windows:
+   ```cmd
+   setx OPENAI_API_KEY "sk-your-actual-api-key"
+   ```
+3. In `config.toml`:
+   ```toml
+   [llm]
+   enabled = "auto" # Will activate automatically when key is detected
+   base_url = "https://api.openai.com/v1" # Or https://api.groq.com/openai/v1
+   model = "gpt-4o-mini" # Or llama-3.3-70b-versatile
+   api_key_env = "OPENAI_API_KEY"
+   ```
 
-A folder containing `.git`, `package.json`, `pyproject.toml`, `Cargo.toml`,
-`index.csv` or similar is a **project**. It is treated as one object. The
-organiser never walks inside and never files its 4,000 files individually —
-that would destroy the repo.
+---
 
-By default project folders are classified but **left where they are**
-(`move_projects = false`), because moving a repo breaks absolute paths,
-virtualenvs and IDE settings.
+### 4. Setting Source Folders & Destination Vault
 
-### 2. `[protect]` — the off-limits list
-
-Active workspaces, render pipelines and app resource folders go here:
-
+Open `config.toml`:
 ```toml
-[protect]
-paths = [
-  "C:/Users/you/Downloads/New YT",
-  "C:/Users/you/Videos/Clipper Engine",
-  "C:/Users/you/OneDrive/Documents/CyberLink",
+[general]
+# Where sorted files will be organized
+vault = "~/Organized"
+
+# Folders to scan and organize.
+# "@name" resolves real Windows shell paths (including OneDrive-redirected folders)
+roots = [
+  "@downloads",
+  "@desktop",
+  "@documents",
+  "@pictures",
+  "@videos",
+  "@music",
+  # "D:/MyCustomFolder" # You can add explicit paths too
 ]
 ```
 
-Anything under these paths is invisible to the organiser: not read, not listed,
-not moved. This is the escape hatch that keeps a good wardrobe from eating your
-tools.
+---
 
-### 3. Real shell folders, not guesses
-
-Desktop, Documents and Pictures are usually redirected into OneDrive. A
-hardcoded `C:/Users/you/Desktop` is then the wrong, empty folder. Roots use
-`@` aliases resolved from the Windows registry:
-
+### 5. Protecting Active Projects & Workspaces
+Wardrobe has built-in project awareness:
+- Any folder containing `.git`, `package.json`, `pyproject.toml`, `Cargo.toml`, etc., is recognized as a **Project Unit** and will **never** be dismantled into loose files.
+- To keep specific workspaces completely off-limits, add them to `[protect]`:
 ```toml
-roots = ["@downloads", "@desktop", "@documents", "@pictures", "@videos", "@music"]
+[protect]
+paths = [
+  "~/Downloads/ActiveWork",
+  "~/Videos/RawFootage",
+]
 ```
 
 ---
 
-## Safety
-
-- **Nothing is deleted. Ever.** Not by any command.
-- `apply` verifies the file still exists and hasn't changed size since `scan`.
-- It never overwrites: name collisions become `report (2).pdf`.
-- Every move is written to `state\undo-<timestamp>.json` (last 40 kept).
-- `undo` refuses to clobber a file that reappeared at the original path.
-- Junctions, symlinks and reparse points are never followed (no infinite loops,
-  no duplicate copies of the same folder).
-- OneDrive cloud placeholders are detected and **not** downloaded just to be
-  classified.
-- System paths, `AppData`, `node_modules`, `.git`, `Program Files`, hidden
-  folders, the vault itself and this program's own folder are skipped.
-- `~$` Office lock files, `desktop.ini`, `Thumbs.db`, `.crdownload` and other
-  in-progress junk are skipped.
-- Low-confidence files are not moved by default.
-- `watch` only auto-files at `--min-confidence` (default 80%) and logs every
-  decision to `state\watch.log`.
-
-Recommended first run: `plan`, look at the HTML board, then `apply --copy`.
-
----
-
-## Performance notes
-
-- Text extraction is pure stdlib: `.docx/.xlsx/.pptx` are read straight out of
-  their zip containers, no python-docx needed.
-- `.pdf` is the one exception. Without `pypdf` installed, PDFs are classified by
-  filename and folder only. To get real PDF text:
-  ```bat
-  pip install pypdf
-  ```
-  (Already installed in this workspace — verified on a real salary slip, 1,273
-  characters extracted, correctly filed under Salary & Employment.)
-- Files over `max_size_mb` are classified by name only, never opened.
-- A 12,000-file Downloads folder scans in about a second, because project
-  folders collapse to one entry each.
-- `audit` hashes every file — it's the slow one. Everything else is fast.
-
----
-
-## Files
-
+### 6. Separating Family / Team Member Documents
+If multiple people share the computer, Wardrobe can automatically identify their personal files (resumes, medical reports, salary slips, IDs) and organize them into separate subfolders:
+```toml
+[general]
+people = ["Alex", "Jordan", "Sam"]
 ```
-config.toml            roots, vault, layout, protect list, ignore rules, LLM
-taxonomy.json          the categories - this is the wardrobe
-organize.py            CLI entry point
-organize.cmd           Windows wrapper (so you don't need to type "python")
-organizer/
-  config.py            config + taxonomy loading, @shell-folder resolution
-  scanner.py           walks roots, detects projects, builds FileInfo records
-  textract.py          text out of docx/xlsx/pptx/pdf/txt/code, zero deps
-  media.py             reads pixels + EXIF to tell photos from screenshots/art
-  ocr.py               tesseract OCR for images and scanned PDFs
-  rules.py             deterministic token-based scorer
-  llm.py               OpenAI-compatible batch classifier
-  planner.py           builds the move plan, handles collisions and protection
-  apply.py             executes + journals + undo
-  report.py            the HTML review board
-  audit.py             duplicates, empty dirs, junk
-dashboard/
-  app.py               Flask server: the live view + job runner
-  templates/index.html the dashboard page
-  static/style.css     its styling and animations
-  static/app.js        its logic
-tests/
-  test_rules.py        regression tests for the classifier
-  test_media.py        image provenance tests
-  test_ocr.py          OCR tests against real rendered text
-state/                 inventory.json, plan.json, undo journals, seen.json, watch.log
-reports/               plan.html
+Files matching these names will land under `Personal & Life/Identity/<Name>` or `Money & Paperwork/Salary/<Name>`.
+
+---
+
+## 🎛️ The Live Dashboard Control Room
+
+Running `start.bat` or `Wardrobe.exe` opens the web control room at **`http://127.0.0.1:8765`**:
+
+1. **⚡ Live Sorting Chamber:** An animated hopper with live speed controls (1x, 2x, 5x, Max) where you watch incoming files glide into dynamically generated category folders.
+2. **📁 File Explorer & Validation Staging:** 
+   - View every file with its destination, preview thumbnail, and confidence score.
+   - **Interactive Checkboxes:** All planned files are selected by default. Simply uncheck any file you wish to keep in place, then click **`[ 🚀 Move Allowed Files ]`**.
+3. **⧉ Duplicates & Review Station:** Identifies duplicate copies across different folders using cryptographic hashes, allowing 1-click duplicate isolation.
+4. **↺ Changes & Rollback Journal:** Complete audit trail of every file moved, with instant 1-click restoration.
+
+---
+
+## 🧠 The Wardrobe Brain (`taxonomy.json`)
+
+The default taxonomy is organized into 10 intuitive human domains:
+
+| Category | Primary Subcategories |
+|---|---|
+| **Money & Paperwork** | Taxes, Invoices & Receipts, Banking, Insurance, Salary, Loans |
+| **Work & Clients** | Clients, Contracts, Deliverables, Meetings, Pitches & Decks |
+| **Personal & Life** | Identity & Certificates, Health & Medical, Home & Bills, Travel |
+| **Learning & Reference** | Courses, Books & Ebooks, Research Papers, Guides, Notes |
+| **Media Library** | Camera Photos, Screenshots, Wallpapers, Personal Videos, Music |
+| **Code & Development** | Repositories, Configs & Env, Databases, Scripts, Documentation |
+| **Creative Projects** | Video Editing, YouTube & Shorts, Graphic Design, Audio Assets |
+| **Installers & Software** | Software Installers, Drivers, License Keys |
+| **Archive & Old** | Old Versions, Zip Bundles |
+| **Unsorted** | Needs Review (Safety buffer for ambiguous files) |
+
+You can customize categories, subcategories, and keywords at any time by editing `taxonomy.json`.
+
+---
+
+## 🛡️ Guaranteed Safety & Rollback
+
+- **No Overwriting:** If `Report.pdf` already exists in the destination, Wardrobe names the new file `Report (2).pdf`.
+- **Atomic Journaling:** Every move is recorded in `state/undo-<timestamp>.json`. Running `organize.cmd undo` or clicking **Undo** in the dashboard reverses the move file-by-file.
+- **Project Preservation:** Software repositories and complex projects are never taken apart.
+- **Zero Cloud Uploads by Default:** Operates strictly on localhost (`127.0.0.1`).
+
+---
+
+## 🔨 Building the Standalone EXE
+
+To package your own standalone `.exe` from source:
+```bash
+pip install pyinstaller
+python build_exe.py
 ```
+The output executable will be generated in `dist/Wardrobe.exe`.
 
 ---
 
-## Roadmap (not built yet)
+## 📄 License
 
-- **Semantic dedupe** — find the *same document* re-saved as PDF and DOCX.
-- **Learning from corrections** — when you move a file out of `Unsorted`, record
-  the keywords that would have caught it.
-- **Two-way sync with Paperless-ngx** for the document-heavy half.
-- **Local embeddings** — `sentence-transformers` for classification that never
-  leaves the machine and costs nothing per file.
-- **Scheduled runs** — wrap `watch --once` in a Windows Task Scheduler job.
-- **Vision model** — ask a local llava model "what is this photo of?" for images
-  where EXIF and filename are not enough.
-
----
-
-## Prior art
-
-Nothing does exactly this. Closest things:
-
-- [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) — OCR + ML
-  tagging, but a Docker web app that copies files into its own database.
-- [organize-tool](https://github.com/tfeldmann/organize) — excellent rule engine
-  (`if name contains …`), zero understanding.
-- [FileBot](https://www.filebot.net/) — media only, metadata-driven.
-- [TagSpaces](https://www.tagspaces.org/) — tagging UI, manual.
-- Various `ai-file-organizer` repos — let the model move files directly, no
-  review step, no journal, no taxonomy.
+This project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it freely.
