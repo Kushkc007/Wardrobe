@@ -34,19 +34,6 @@ Thank you for your interest in contributing to Wardrobe! We welcome all contribu
 
 ---
 
-## 🧪 Running Tests
-
-Before submitting any code changes, ensure all unit tests pass:
-
-```bash
-python tests/test_rules.py
-python tests/test_bundles.py
-python tests/test_textract.py
-python tests/test_media.py
-```
-
----
-
 ## 🌟 Areas We'd Love Help With
 
 - **Semantic Document Deduplication:** Detecting duplicates across different formats (e.g., matching a PDF invoice with its Word `.docx` original).

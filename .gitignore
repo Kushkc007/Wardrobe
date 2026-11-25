@@ -20,6 +20,7 @@ build/
 dist/
 *.spec
 build_exe.py
+tests/
 
 # Editor & OS files
 .vscode/
